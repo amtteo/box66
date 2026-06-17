@@ -33,6 +33,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { FieldError, FormMessage } from "@/components/admin/form-feedback";
+import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { useCart } from "@/components/storefront/cart-context";
 import { StripeCheckout } from "@/components/storefront/stripe-checkout";
 import { cn } from "@/lib/utils";
@@ -57,11 +58,13 @@ export function CartSheet({
   currency,
   onlinePaymentEnabled,
   defaultCustomer,
+  isAuthed = false,
 }: {
   storeId: string;
   currency: string;
   onlinePaymentEnabled: boolean;
   defaultCustomer?: { name?: string; email?: string };
+  isAuthed?: boolean;
 }) {
   const { lines, totalQuantity, subtotal, setQuantity, remove, clear } =
     useCart();
@@ -79,6 +82,7 @@ export function CartSheet({
   const [clientSecret, setClientSecret] = useState<string>();
   const [orderId, setOrderId] = useState<string>();
   const [success, setSuccess] = useState<OrderStatusInfo>();
+  const [signInOpen, setSignInOpen] = useState(false);
 
   function resetOnClose(next: boolean) {
     setOpen(next);
@@ -152,7 +156,8 @@ export function CartSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={resetOnClose}>
+    <>
+      <Sheet open={open} onOpenChange={resetOnClose}>
       <SheetTrigger asChild>
         <Button
           size="lg"
@@ -229,6 +234,20 @@ export function CartSheet({
                 className="space-y-5"
               >
                 <FormMessage message={error} />
+
+                {!isAuthed && (
+                  <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                    Máš účet?{" "}
+                    <button
+                      type="button"
+                      onClick={() => setSignInOpen(true)}
+                      className="font-medium text-foreground underline"
+                    >
+                      Prihlás sa
+                    </button>{" "}
+                    a predvyplníme tvoje údaje.
+                  </p>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="customerName">Meno</Label>
@@ -386,6 +405,13 @@ export function CartSheet({
         )}
       </SheetContent>
     </Sheet>
+
+      <SignInDialog
+        redirectTo="/"
+        open={signInOpen}
+        onOpenChange={setSignInOpen}
+      />
+    </>
   );
 }
 

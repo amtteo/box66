@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { safeRedirectPath } from "@/lib/auth/redirect";
 import { pruneStaleSupabaseAuthCookies } from "@/lib/supabase/cookie-cleanup";
 
 /**
@@ -56,7 +57,10 @@ export async function updateSession(request: NextRequest) {
 
   if (user && isAuthPage) {
     const url = request.nextUrl.clone();
-    url.pathname = "/admin";
+    url.pathname = safeRedirectPath(
+      request.nextUrl.searchParams.get("redirect"),
+      "/",
+    );
     url.search = "";
     return finishResponse(request, redirectKeepingCookies(url, supabaseResponse));
   }

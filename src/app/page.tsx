@@ -15,7 +15,7 @@ export default async function Home() {
       <SiteHeader isAuthed={!!user} />
 
       {store ? (
-        <StoreFront storeId={store.id} currency={store.currency} />
+        <StoreFront storeId={store.id} currency={store.currency} isAuthed={!!user} />
       ) : (
         <div className="mx-auto w-full max-w-5xl px-6 py-24 text-center text-muted-foreground">
           <h1 className="mb-2 text-3xl font-semibold text-foreground">Box66</h1>
@@ -29,9 +29,11 @@ export default async function Home() {
 async function StoreFront({
   storeId,
   currency,
+  isAuthed,
 }: {
   storeId: string;
   currency: string;
+  isAuthed: boolean;
 }) {
   const [menu, profile] = await Promise.all([
     getPublicMenu(storeId),
@@ -80,6 +82,7 @@ async function StoreFront({
         currency={currency}
         onlinePaymentEnabled={onlinePaymentEnabled}
         defaultCustomer={defaultCustomer}
+        isAuthed={isAuthed}
       />
     </CartProvider>
   );

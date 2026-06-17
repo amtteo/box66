@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldError, FormMessage } from "@/components/auth/form-feedback";
 
-export function SignUpForm() {
+export function SignUpForm({ redirectTo = "/" }: { redirectTo?: string }) {
   const [state, action, pending] = useActionState<AuthFormState, FormData>(
     signUp,
     undefined,
@@ -28,11 +28,14 @@ export function SignUpForm() {
     <Card>
       <CardHeader>
         <CardTitle>Registrácia</CardTitle>
-        <CardDescription>Vytvor si účet v platforme Box66.</CardDescription>
+        <CardDescription>
+          Vytvor si účet a nabudúce objednáš rýchlejšie.
+        </CardDescription>
       </CardHeader>
       <form action={action}>
         <CardContent className="space-y-4">
           <FormMessage message={state?.message} />
+          <input type="hidden" name="redirect" value={redirectTo} />
           <div className="space-y-2">
             <Label htmlFor="fullName">Meno a priezvisko</Label>
             <Input
@@ -77,7 +80,10 @@ export function SignUpForm() {
           </Button>
           <p className="text-center text-sm text-muted-foreground">
             Už máš účet?{" "}
-            <Link href="/prihlasenie" className="text-foreground underline">
+            <Link
+              href={`/prihlasenie?redirect=${encodeURIComponent(redirectTo)}`}
+              className="text-foreground underline"
+            >
               Prihlás sa
             </Link>
           </p>

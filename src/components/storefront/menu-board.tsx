@@ -237,7 +237,7 @@ export function MenuBoard({
   return (
     <>
       <div className="mx-auto w-full max-w-6xl">
-        <div className="sticky top-16 z-30 border-b border-primary bg-background md:hidden">
+        <div className="sticky top-16 z-30 border-b-2 border-primary bg-background md:hidden">
           <div className="flex gap-1 overflow-x-auto px-3 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {categories.map((category) => (
               <div
@@ -260,7 +260,7 @@ export function MenuBoard({
         </div>
 
         <div className="flex min-h-[calc(100dvh-4rem)]">
-          <aside className="hidden w-[148px] shrink-0 border-r-2 border-primary md:block lg:w-[160px] pl-3">
+          <aside className="hidden text-white w-[148px] shrink-0 border-r-2 border-primary md:block lg:w-[160px] pl-3">
             <nav className="sticky top-16 flex flex-col gap-1 p-3">
               {categories.map((category) => (
                 <CategoryTab

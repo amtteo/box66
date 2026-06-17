@@ -13,6 +13,7 @@ import {
   ACTIVE_ORG_COOKIE,
   ACTIVE_STORE_COOKIE,
 } from "@/lib/auth/active-context";
+import { safeRedirectPath } from "@/lib/auth/redirect";
 import { cookies } from "next/headers";
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 dní
@@ -46,7 +47,7 @@ export async function signIn(
   }
 
   revalidatePath("/", "layout");
-  redirect("/admin");
+  redirect(safeRedirectPath(formData.get("redirect"), "/"));
 }
 
 export async function signUp(
@@ -104,7 +105,7 @@ export async function signUp(
   }
 
   revalidatePath("/", "layout");
-  redirect("/admin");
+  redirect(safeRedirectPath(formData.get("redirect"), "/"));
 }
 
 export async function signOut() {
