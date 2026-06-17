@@ -13,13 +13,17 @@ export function CartAddedToaster() {
       id={CART_TOASTER_ID}
       position="bottom-right"
       offset={{ bottom: 88, right: 20 }}
+      mobileOffset={{ bottom: 88, right: 20 }}
       visibleToasts={1}
       expand={false}
       closeButton={false}
+      className="cart-added-toaster !w-auto max-w-[calc(100vw-2.5rem)] items-end"
+      style={{ "--width": "auto" } as React.CSSProperties}
       toastOptions={{
         unstyled: true,
         classNames: {
-          toast: "p-0 bg-transparent border-none shadow-none w-auto",
+          toast:
+            "ml-auto w-auto p-0 bg-transparent border-none shadow-none",
         },
       }}
     />
@@ -31,7 +35,7 @@ export function showCartAddedToast(itemName: string) {
     (id) => (
       <div
         role="status"
-        className="relative w-72 cursor-default rounded-xl border-2 border-foreground bg-white p-12 custom-shadow mb-6"
+        className="relative ml-auto w-64 max-w-[calc(100vw-2.5rem)] cursor-default rounded-xl border-2 border-foreground bg-white p-6 custom-shadow mb-6 sm:w-72 sm:p-12"
         onClick={() => toast.dismiss(id)}
       >
         <div className="flex justify-center">
