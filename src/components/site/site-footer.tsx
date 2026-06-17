@@ -33,11 +33,6 @@ export function SiteFooter({ store }: { store: StoreContact | null }) {
               </Link>
             </li>
             <li>
-              <Link href="/o-nas" className="hover:text-background">
-                O nás
-              </Link>
-            </li>
-            <li>
               <Link href="/kontakt" className="hover:text-background">
                 Kontakt
               </Link>
