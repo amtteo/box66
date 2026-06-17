@@ -90,7 +90,6 @@ export function RecipeItemDialog({
         {trigger ?? (
           <Button disabled={noIngredients}>
             <Plus className="size-4" />
-            Pridať surovinu
           </Button>
         )}
       </DialogTrigger>

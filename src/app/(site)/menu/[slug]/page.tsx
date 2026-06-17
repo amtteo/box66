@@ -57,7 +57,7 @@ export default async function MenuItemPage({
       </Button>
 
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
-        <div className="relative aspect-square w-full overflow-hidden rounded-2xl border bg-muted">
+        <div className="relative aspect-square w-full overflow-hidden rounded-xl border">
           {product.imageUrl ? (
             <Image
               src={product.imageUrl}

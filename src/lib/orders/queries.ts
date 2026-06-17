@@ -43,7 +43,12 @@ export type PublicMenuItem = {
     allergens: string[];
     kcal: number | null;
     prepMinutes: number | null;
-    category: { id: string; name: string; sortOrder: number };
+    category: {
+      id: string;
+      name: string;
+      sortOrder: number;
+      imageUrl: string | null;
+    };
   };
   choiceGroups: MenuChoiceGroup[];
 };
@@ -65,7 +70,9 @@ export async function getPublicMenu(storeId: string): Promise<PublicMenuItem[]> 
           allergens: true,
           kcal: true,
           prepMinutes: true,
-          category: { select: { id: true, name: true, sortOrder: true } },
+          category: {
+            select: { id: true, name: true, sortOrder: true, imageUrl: true },
+          },
           choiceGroups: {
             orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
             select: {

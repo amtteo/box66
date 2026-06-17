@@ -39,14 +39,6 @@ export function RecipeItemsTable({
   return (
     <div className="rounded-lg border">
       <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Surovina</TableHead>
-            <TableHead className="text-right">Množstvo</TableHead>
-            <TableHead>Poznámka</TableHead>
-            <TableHead className="w-12 text-right">Akcie</TableHead>
-          </TableRow>
-        </TableHeader>
         <TableBody>
           {rows.map((row) => (
             <TableRow key={row.id}>

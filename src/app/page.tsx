@@ -42,7 +42,12 @@ async function StoreFront({
   for (const mi of menu) {
     const cat = mi.product.category;
     if (!map.has(cat.id)) {
-      map.set(cat.id, { id: cat.id, name: cat.name, items: [] });
+      map.set(cat.id, {
+        id: cat.id,
+        name: cat.name,
+        imageUrl: cat.imageUrl,
+        items: [],
+      });
     }
     map.get(cat.id)!.items.push({
       id: mi.id,

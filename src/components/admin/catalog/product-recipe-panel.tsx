@@ -7,7 +7,7 @@ import {
 } from "@/lib/catalog/queries";
 import { getChoiceGroupsForProduct } from "@/lib/choice-groups/queries";
 import { getRecipeByProductId } from "@/lib/recipes/queries";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { RecipeDialog } from "@/components/admin/recipes/recipe-dialog";
 import { RecipeItemDialog } from "@/components/admin/recipes/recipe-item-dialog";
 import { RecipeItemsTable } from "@/components/admin/recipes/recipe-items-table";
@@ -45,6 +45,7 @@ export async function ProductRecipePanel({ productId }: { productId: string }) {
     return (
       <PanelShell
         title={product.name}
+        statusActive={product.isActive}
       >
         <div className="space-y-6">
           <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
@@ -89,28 +90,20 @@ export async function ProductRecipePanel({ productId }: { productId: string }) {
   return (
     <PanelShell
       title={product.name}
+      statusActive={recipe.isActive}
+      headerAction={
+        <RecipeDialog
+          recipe={recipeForm}
+          productName={product.name}
+          trigger={
+            <Button type="button" variant="outline" size="sm">
+              Upraviť receptúru
+            </Button>
+          }
+        />
+      }
     >
       <div className="space-y-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{product.category.name}</Badge>
-          <Badge variant={recipe.isActive ? "default" : "secondary"}>
-            {recipe.isActive ? "Aktívna" : "Neaktívna"}
-          </Badge>
-          <span className="text-sm text-muted-foreground">
-            {recipeRows.length}{" "}
-            {recipeRows.length === 1 ? "surovina" : "surovín"}
-          </span>
-          <RecipeDialog
-            recipe={recipeForm}
-            productName={product.name}
-            trigger={
-              <Badge variant="outline" className="cursor-pointer hover:bg-muted">
-                Upraviť receptúru
-              </Badge>
-            }
-          />
-        </div>
-
         {recipe.instructions ? (
           <div className="rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-line">
             {recipe.instructions}
@@ -119,7 +112,7 @@ export async function ProductRecipePanel({ productId }: { productId: string }) {
 
         <div>
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h4 className="text-sm font-medium">Suroviny</h4>
+            <h4 className="text-sm font-medium">Suroviny ({recipeRows.length})</h4>
             <RecipeItemDialog recipeId={recipe.id} ingredients={ingredients} />
           </div>
           <RecipeItemsTable

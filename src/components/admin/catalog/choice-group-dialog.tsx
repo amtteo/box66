@@ -82,7 +82,6 @@ export function ChoiceGroupDialog({
         {trigger ?? (
           <Button disabled={noPools}>
             <Plus className="size-4" />
-            Pridať výber
           </Button>
         )}
       </DialogTrigger>

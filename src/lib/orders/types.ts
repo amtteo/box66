@@ -35,6 +35,7 @@ export type MenuItemDTO = {
 export type MenuCategoryDTO = {
   id: string;
   name: string;
+  imageUrl: string | null;
   items: MenuItemDTO[];
 };
 
