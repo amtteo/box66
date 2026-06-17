@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 
+import { CartAddedToaster } from "@/components/storefront/cart-added-toast";
 import type { CartChoice, CartLine, MenuItemDTO } from "@/lib/orders/types";
 
 /** Deterministický identifikátor riadka = položka menu + zvolené voľby. */
@@ -128,7 +129,12 @@ export function CartProvider({
     return { lines, totalQuantity, subtotal, add, setQuantity, remove, clear };
   }, [lines, add, setQuantity, remove, clear]);
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+  return (
+    <CartContext.Provider value={value}>
+      {children}
+      <CartAddedToaster />
+    </CartContext.Provider>
+  );
 }
 
 export function useCart(): CartContextValue {

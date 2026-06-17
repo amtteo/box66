@@ -31,7 +31,7 @@ export function SiteHeader({ isAuthed }: { isAuthed: boolean }) {
     pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b-2 border-primary bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-6 px-4 sm:px-6">
         <Link href="/" className="flex items-center text-foreground">
           <Logo />

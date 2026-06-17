@@ -26,7 +26,6 @@ export function PanelShell({
       <div className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="font-medium text-xl">{title}</h3>
             {statusActive !== undefined ? (
               <span
                 className={`size-2 shrink-0 rounded-full ${
@@ -35,6 +34,7 @@ export function PanelShell({
                 title={statusActive ? "Aktívna" : "Neaktívna"}
               />
             ) : null}
+            <h3 className="font-medium text-xl">{title}</h3>
           </div>
           {description ? (
             <p className="text-sm text-muted-foreground">{description}</p>

@@ -3,9 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Flame, ImageIcon, Info, Plus, Wheat } from "lucide-react";
-import { toast } from "sonner";
-
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -20,6 +17,7 @@ import {
   type MenuCategoryDTO,
   type MenuItemDTO,
 } from "@/lib/orders/types";
+import { showCartAddedToast } from "@/components/storefront/cart-added-toast";
 import { useCart } from "@/components/storefront/cart-context";
 import { ComboChoiceDialog } from "@/components/storefront/combo-choice-dialog";
 
@@ -98,11 +96,11 @@ function CategoryTab({
           : "w-full px-3 py-3.5",
         isActive
           ? layout === "mobile"
-            ? "bg-accent"
+            ? "border-2 border-primary"
             : "border-2 border-primary"
           : layout === "desktop"
-            ? "border border-transparent"
-            : "hover:bg-muted/60",
+            ? "border-2 border-transparent"
+            : "border-2 border-transparent",
       )}
     >
       <div
@@ -154,7 +152,7 @@ function MenuItemCard({
   onAdd: (item: MenuItemDTO) => void;
 }) {
   return (
-    <Card className="overflow-hidden pt-0 shadow-none relative">
+    <Card className="overflow-hidden pt-0 shadow-none border-0 border-r-2 border-b-2 border-primary rounded-none relative">
       <div className="relative aspect-[4/3] w-full">
         {item.imageUrl ? (
           <Image
@@ -223,7 +221,7 @@ export function MenuBoard({
       return;
     }
     add(item);
-    toast.success(`„${item.name}" pridané do košíka.`);
+    showCartAddedToast(item.name);
   }
 
   if (categories.length === 0) {
@@ -262,7 +260,7 @@ export function MenuBoard({
         </div>
 
         <div className="flex min-h-[calc(100dvh-4rem)]">
-          <aside className="hidden w-[148px] shrink-0 border-r md:block lg:w-[160px] pl-3">
+          <aside className="hidden w-[148px] shrink-0 border-r-2 border-primary md:block lg:w-[160px] pl-3">
             <nav className="sticky top-16 flex flex-col gap-1 p-3">
               {categories.map((category) => (
                 <CategoryTab
@@ -276,7 +274,7 @@ export function MenuBoard({
             </nav>
           </aside>
 
-          <div className="min-w-0 flex-1 px-4 py-6 sm:px-6">
+          <div className="min-w-0 flex-1">
             {activeCategory && (
               <section className="space-y-5">
                 {activeCategory.items.length === 0 ? (
@@ -284,7 +282,7 @@ export function MenuBoard({
                     V tejto kategórii zatiaľ nie sú žiadne položky.
                   </p>
                 ) : (
-                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid sm:grid-cols-2 xl:grid-cols-3">
                     {activeCategory.items.map((item) => (
                       <MenuItemCard
                         key={item.id}

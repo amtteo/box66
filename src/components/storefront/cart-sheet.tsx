@@ -35,6 +35,7 @@ import {
 import { FieldError, FormMessage } from "@/components/admin/form-feedback";
 import { useCart } from "@/components/storefront/cart-context";
 import { StripeCheckout } from "@/components/storefront/stripe-checkout";
+import { cn } from "@/lib/utils";
 import {
   finalizeCheckout,
   placeOrder,
@@ -155,14 +156,23 @@ export function CartSheet({
       <SheetTrigger asChild>
         <Button
           size="lg"
-          className="fixed bottom-5 right-5 z-40 gap-2 rounded-full shadow-lg"
+          variant="outline"
+          className="fixed bottom-5 right-5 z-40 h-auto gap-3 border-2 border-foreground bg-white px-4 py-3 text-base font-semibold text-foreground shadow-lg hover:bg-white hover:text-foreground"
         >
-          <ShoppingCart className="size-5" />
-          <span className="tabular-nums" suppressHydrationWarning>
-            {totalQuantity}
+          <span className="relative shrink-0">
+            <ShoppingCart className="size-6 text-foreground" />
+            <span
+              className={cn(
+                "absolute -right-2.5 -top-1 flex size-5 min-w-5 items-center justify-center rounded-full text-[11px] font-bold leading-none text-white",
+                totalQuantity > 0 ? "bg-red-500" : "bg-foreground",
+              )}
+              suppressHydrationWarning
+            >
+              {totalQuantity}
+            </span>
           </span>
-          <span className="tabular-nums" suppressHydrationWarning>
-            · {formatMoney(subtotal, currency)}
+          <span className="tabular-nums text-lg" suppressHydrationWarning>
+            {formatMoney(subtotal, currency)}
           </span>
         </Button>
       </SheetTrigger>

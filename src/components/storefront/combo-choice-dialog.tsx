@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 import { Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { showCartAddedToast } from "@/components/storefront/cart-added-toast";
 import { useCart } from "@/components/storefront/cart-context";
 import { formatMoney, type CartChoice, type MenuItemDTO } from "@/lib/orders/types";
 
@@ -86,7 +86,7 @@ export function ComboChoiceDialog({
       }
     }
     add(item, choices);
-    toast.success(`„${item.name}" pridané do košíka.`);
+    showCartAddedToast(item.name);
     onClose();
   }
 
