@@ -237,7 +237,7 @@ export function MenuBoard({
   return (
     <>
       <div className="mx-auto w-full max-w-6xl">
-        <div className="sticky top-16 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden">
+        <div className="sticky top-16 z-30 border-b border-primary bg-background md:hidden">
           <div className="flex gap-1 overflow-x-auto px-3 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {categories.map((category) => (
               <div
