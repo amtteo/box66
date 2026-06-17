@@ -45,7 +45,6 @@ export async function ProductRecipePanel({ productId }: { productId: string }) {
     return (
       <PanelShell
         title={product.name}
-        description="Receptúra a výber v kombe"
       >
         <div className="space-y-6">
           <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">

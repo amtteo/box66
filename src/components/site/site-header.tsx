@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 
+import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,11 +33,9 @@ export function SiteHeader({ isAuthed }: { isAuthed: boolean }) {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-6 px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-            66
-          </span>
-          <span className="text-lg font-semibold tracking-tight">Box66</span>
+        <Link href="/" className="flex items-center text-foreground">
+          <Logo />
+          <span className="sr-only">Box66</span>
         </Link>
 
         <nav className="hidden flex-1 items-center gap-1 md:flex">
@@ -75,7 +74,9 @@ export function SiteHeader({ isAuthed }: { isAuthed: boolean }) {
             </SheetTrigger>
             <SheetContent side="right" className="w-72">
               <SheetHeader>
-                <SheetTitle>Box66</SheetTitle>
+                <SheetTitle className="flex items-center">
+                  <Logo />
+                </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-1 px-2">
                 {NAV.map((item) => (
