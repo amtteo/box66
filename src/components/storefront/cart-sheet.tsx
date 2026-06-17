@@ -30,8 +30,8 @@ import {
 } from "@/components/ui/select";
 import {
   Sheet,
+  SheetCloseButton,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -200,35 +200,31 @@ export function CartSheet({
 
       <SheetContent
         side="right"
+        showCloseButton={false}
         className="flex w-full flex-col gap-0 p-0 sm:max-w-full"
       >
         <SheetHeader className="border-b">
-          <div className="mx-auto flex w-full max-w-2xl items-center gap-3">
-            {(view === "checkout" || view === "payment") && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setView(view === "payment" ? "checkout" : "cart")}
-                disabled={pending}
-              >
-                <ArrowLeft className="size-4" />
-                <span className="sr-only">Späť</span>
-              </Button>
-            )}
-            <div>
+          <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              {(view === "checkout" || view === "payment") && (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setView(view === "payment" ? "checkout" : "cart")}
+                  disabled={pending}
+                >
+                  <ArrowLeft className="size-4" />
+                  <span className="sr-only">Späť</span>
+                </Button>
+              )}
               <SheetTitle>
                 {view === "cart" && "Košík"}
                 {view === "checkout" && "Údaje a platba"}
                 {view === "payment" && "Platba kartou"}
                 {view === "success" && "Objednávka prijatá"}
               </SheetTitle>
-              <SheetDescription>
-                {view === "cart" && "Skontroluj položky pred objednaním."}
-                {view === "checkout" && "Zadaj kontaktné údaje a spôsob platby."}
-                {view === "payment" && "Bezpečná platba cez Stripe."}
-                {view === "success" && "Ďakujeme za objednávku."}
-              </SheetDescription>
             </div>
+            <SheetCloseButton />
           </div>
         </SheetHeader>
 
@@ -459,7 +455,7 @@ function CartView({
   return (
     <ul className="divide-y">
       {lines.map((line) => (
-        <li key={line.lineId} className="flex items-center gap-4 py-4">
+        <li key={line.lineId} className="flex gap-4 py-4">
           <div className="relative size-20 shrink-0 overflow-hidden rounded-lg border bg-muted">
             {line.imageUrl ? (
               <Image
@@ -476,53 +472,58 @@ function CartView({
             )}
           </div>
 
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-lg font-semibold">{line.name}</p>
-            {line.choices.length > 0 && (
-              <p className="truncate text-sm text-muted-foreground">
-                {line.choices.map((c) => c.name).join(", ")}
+          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="min-w-0 flex-1">
+              <p className="text-lg font-semibold leading-snug">{line.name}</p>
+              {line.choices.length > 0 && (
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  {line.choices.map((c) => c.name).join(", ")}
+                </p>
+              )}
+              <p className="mt-1 text-sm text-muted-foreground tabular-nums">
+                {formatMoney(line.price, currency)}
               </p>
-            )}
-            <p className="text-sm text-muted-foreground tabular-nums">
-              {formatMoney(line.price, currency)}
-            </p>
-          </div>
+            </div>
 
-          <div className="flex items-center gap-0.5">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-10"
-              onClick={() => setQuantity(line.lineId, line.quantity - 1)}
-            >
-              <Minus className="size-6" />
-            </Button>
-            <span className="min-w-8 text-center text-lg font-semibold tabular-nums">
-              {line.quantity}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-10"
-              onClick={() => setQuantity(line.lineId, line.quantity + 1)}
-            >
-              <Plus className="size-6" />
-            </Button>
-          </div>
+            <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end sm:gap-4">
+              <div className="flex items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-10"
+                  onClick={() => setQuantity(line.lineId, line.quantity - 1)}
+                >
+                  <Minus className="size-6" />
+                </Button>
+                <span className="min-w-8 text-center text-lg font-semibold tabular-nums">
+                  {line.quantity}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-10"
+                  onClick={() => setQuantity(line.lineId, line.quantity + 1)}
+                >
+                  <Plus className="size-6" />
+                </Button>
+              </div>
 
-          <div className="w-24 text-right text-lg font-semibold tabular-nums">
-            {formatMoney(line.price * line.quantity, currency)}
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-semibold tabular-nums">
+                  {formatMoney(line.price * line.quantity, currency)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-10 text-muted-foreground hover:text-destructive"
+                  onClick={() => remove(line.lineId)}
+                >
+                  <Trash2 className="size-5" />
+                  <span className="sr-only">Odstrániť</span>
+                </Button>
+              </div>
+            </div>
           </div>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-10 text-muted-foreground hover:text-destructive"
-            onClick={() => remove(line.lineId)}
-          >
-            <Trash2 className="size-5" />
-            <span className="sr-only">Odstrániť</span>
-          </Button>
         </li>
       ))}
     </ul>

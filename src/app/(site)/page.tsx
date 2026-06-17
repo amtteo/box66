@@ -4,25 +4,22 @@ import { isStripeConfigured } from "@/lib/stripe/server";
 import { CartProvider } from "@/components/storefront/cart-context";
 import { MenuBoard } from "@/components/storefront/menu-board";
 import { CartSheet } from "@/components/storefront/cart-sheet";
-import { SiteHeader } from "@/components/site/site-header";
 import type { MenuCategoryDTO } from "@/lib/orders/types";
 
 export default async function Home() {
   const [user, store] = await Promise.all([getUser(), getDefaultStore()]);
 
-  return (
-    <main className="flex flex-1 flex-col">
-      <SiteHeader isAuthed={!!user} />
+  if (!store) {
+    return (
+      <div className="mx-auto w-full max-w-5xl px-6 py-24 text-center text-muted-foreground">
+        <h1 className="mb-2 text-3xl font-semibold text-foreground">Box66</h1>
+        <p>Momentálne nie je dostupná žiadna predajňa.</p>
+      </div>
+    );
+  }
 
-      {store ? (
-        <StoreFront storeId={store.id} currency={store.currency} isAuthed={!!user} />
-      ) : (
-        <div className="mx-auto w-full max-w-5xl px-6 py-24 text-center text-muted-foreground">
-          <h1 className="mb-2 text-3xl font-semibold text-foreground">Box66</h1>
-          <p>Momentálne nie je dostupná žiadna predajňa.</p>
-        </div>
-      )}
-    </main>
+  return (
+    <StoreFront storeId={store.id} currency={store.currency} isAuthed={!!user} />
   );
 }
 
@@ -76,7 +73,11 @@ async function StoreFront({
 
   return (
     <CartProvider storeId={storeId}>
-      <MenuBoard categories={categories} currency={currency} />
+      <MenuBoard
+        categories={categories}
+        currency={currency}
+        showWelcome={!isAuthed}
+      />
       <CartSheet
         storeId={storeId}
         currency={currency}

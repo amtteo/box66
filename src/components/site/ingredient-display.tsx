@@ -12,7 +12,7 @@ export function IngredientCompositionStrip({
   if (ingredients.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-4 gap-3 sm:gap-4">
+    <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 sm:gap-4">
       {ingredients.map((ingredient) => (
         <div
           key={ingredient.name}
@@ -24,7 +24,7 @@ export function IngredientCompositionStrip({
                 src={ingredient.imageUrl}
                 alt={ingredient.name}
                 fill
-                sizes="(max-width: 640px) 25vw, 96px"
+                sizes="(max-width: 640px) 33vw, 96px"
                 className="object-contain"
               />
             ) : (

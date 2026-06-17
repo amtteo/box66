@@ -106,10 +106,10 @@ export function SiteHeader({ isAuthed }: { isAuthed: boolean }) {
                 <span className="sr-only">Otvoriť menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full max-w-md gap-10 p-12">
+            <SheetContent side="right" className="w-full max-w-md gap-10 px-12 pb-12 pt-24">
               <SheetHeader className="p-0">
                 <SheetTitle className="flex items-center">
-                  <Logo />
+                  <Logo iconClassName="h-6" textClassName="h-4" className="gap-1.5" />
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-10">

@@ -22,6 +22,25 @@ function SheetClose({
   return <SheetPrimitive.Close data-slot="sheet-close" {...props} />
 }
 
+function SheetCloseButton({
+  className,
+  ...props
+}: React.ComponentProps<typeof SheetPrimitive.Close>) {
+  return (
+    <SheetPrimitive.Close
+      data-slot="sheet-close-button"
+      className={cn(
+        "flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-foreground bg-background outline-none transition-colors hover:bg-accent focus:outline-none focus-visible:outline-none focus-visible:ring-0 disabled:pointer-events-none",
+        className,
+      )}
+      {...props}
+    >
+      <XIcon className="size-5" />
+      <span className="sr-only">Zavrieť</span>
+    </SheetPrimitive.Close>
+  )
+}
+
 function SheetPortal({
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Portal>) {
@@ -75,10 +94,7 @@ function SheetContent({
       >
         {children}
         {showCloseButton && (
-          <SheetPrimitive.Close className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-secondary">
-            <XIcon className="size-4" />
-            <span className="sr-only">Close</span>
-          </SheetPrimitive.Close>
+          <SheetCloseButton className="absolute top-8 right-8" />
         )}
       </SheetPrimitive.Content>
     </SheetPortal>
@@ -135,6 +151,7 @@ export {
   Sheet,
   SheetTrigger,
   SheetClose,
+  SheetCloseButton,
   SheetContent,
   SheetHeader,
   SheetFooter,

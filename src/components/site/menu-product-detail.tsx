@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Clock, Flame, ImageIcon } from "lucide-react";
+import { Flame, ImageIcon } from "lucide-react";
 
 import { ALLERGENS } from "@/lib/catalog/schemas";
 import { formatMoney } from "@/lib/orders/types";
@@ -70,24 +70,14 @@ export function MenuProductDetail({
           </p>
         )}
 
-        <div className="flex flex-wrap items-center gap-2">
-          {product.kcal != null && (
-            <div className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
-              <Flame className="size-4 text-muted-foreground" />
-              <span className="font-medium tabular-nums">
-                {product.kcal} kcal
-              </span>
-            </div>
-          )}
-          {product.prepMinutes != null && (
-            <div className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
-              <Clock className="size-4 text-muted-foreground" />
-              <span className="font-medium tabular-nums">
-                cca {product.prepMinutes} min
-              </span>
-            </div>
-          )}
-        </div>
+        {product.kcal != null && (
+          <div className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
+            <Flame className="size-4 text-muted-foreground" />
+            <span className="font-medium tabular-nums">
+              {product.kcal} kcal
+            </span>
+          </div>
+        )}
 
         <p className="text-xs text-foreground sm:text-sm">
           <span className="font-semibold">Alergény:</span>{" "}

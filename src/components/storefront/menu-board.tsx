@@ -22,6 +22,23 @@ import { showCartAddedToast } from "@/components/storefront/cart-added-toast";
 import { useCart } from "@/components/storefront/cart-context";
 import { ComboChoiceDialog } from "@/components/storefront/combo-choice-dialog";
 
+export const WELCOME_CATEGORY_ID = "__welcome__";
+
+const WELCOME_CATEGORY: MenuCategoryDTO = {
+  id: WELCOME_CATEGORY_ID,
+  name: "Vitaj",
+  imageUrl: "/custom.webp",
+  items: [],
+};
+
+function WelcomePanel() {
+  return (
+    <div className="overflow-hidden bg-background md:border-r-2 md:border-primary">
+      <img src="/hero.webp" alt="Box66" className="h-auto w-full" />
+    </div>
+  );
+}
+
 const ALLERGEN_LABEL = new Map(ALLERGENS.map((a) => [a.code, a.label]));
 
 function ItemInfoPopover({ item }: { item: MenuItemDTO }) {
@@ -127,17 +144,23 @@ function MenuItemCard({
 export function MenuBoard({
   categories,
   currency,
+  showWelcome = false,
 }: {
   categories: MenuCategoryDTO[];
   currency: string;
+  showWelcome?: boolean;
 }) {
+  const displayCategories = showWelcome
+    ? [WELCOME_CATEGORY, ...categories]
+    : categories;
   const { add } = useCart();
   const [comboItem, setComboItem] = useState<MenuItemDTO | null>(null);
-  const [activeId, setActiveId] = useState(categories[0]?.id ?? "");
+  const [activeId, setActiveId] = useState(displayCategories[0]?.id ?? "");
   const mobileTabRefs = useRef(new Map<string, HTMLButtonElement>());
 
   const activeCategory =
-    categories.find((c) => c.id === activeId) ?? categories[0];
+    displayCategories.find((c) => c.id === activeId) ?? displayCategories[0];
+  const isWelcomeActive = activeId === WELCOME_CATEGORY_ID;
 
   useEffect(() => {
     const el = mobileTabRefs.current.get(activeId);
@@ -157,7 +180,7 @@ export function MenuBoard({
     showCartAddedToast(item.name);
   }
 
-  if (categories.length === 0) {
+  if (displayCategories.length === 0) {
     return (
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
         <div className="rounded-lg border border-dashed p-10 text-center text-muted-foreground">
@@ -172,7 +195,7 @@ export function MenuBoard({
       <div className="mx-auto w-full max-w-6xl">
         <div className="sticky top-16 z-30 border-b-2 border-primary bg-background md:hidden">
           <div className="flex gap-1 overflow-x-auto px-3 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {categories.map((category) => (
+            {displayCategories.map((category) => (
               <div
                 key={category.id}
                 ref={(el) => {
@@ -195,7 +218,7 @@ export function MenuBoard({
         <div className="flex min-h-[calc(100dvh-4rem)]">
           <aside className="hidden text-white w-[148px] shrink-0 border-r-2 border-primary md:block lg:w-[160px] pl-3">
             <nav className="sticky top-16 flex flex-col gap-1 p-3">
-              {categories.map((category) => (
+              {displayCategories.map((category) => (
                 <CategoryTab
                   key={category.id}
                   category={category}
@@ -208,7 +231,9 @@ export function MenuBoard({
           </aside>
 
           <div className="min-w-0 flex-1">
-            {activeCategory && (
+            {isWelcomeActive ? (
+              <WelcomePanel />
+            ) : activeCategory ? (
               <section className="space-y-5">
                 {activeCategory.items.length === 0 ? (
                   <p className="text-muted-foreground">
@@ -227,7 +252,7 @@ export function MenuBoard({
                   </div>
                 )}
               </section>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

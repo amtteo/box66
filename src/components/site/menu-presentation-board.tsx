@@ -173,7 +173,7 @@ export function MenuPresentationBoard({
 
         {activeCategory && (
           <div className="flex min-h-0 flex-1">
-            <aside className="flex w-[32%] min-w-[108px] shrink-0 flex-col overflow-y-auto border-r-2 border-primary">
+            <aside className="flex w-[108px] shrink-0 flex-col overflow-y-auto border-r-2 border-primary">
               <ProductList
                 items={activeCategory.items}
                 currency={currency}
@@ -183,16 +183,17 @@ export function MenuPresentationBoard({
               />
             </aside>
 
-            <div className="min-w-0 flex-[0.68] overflow-y-auto">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
               {selectedProduct ? (
                 <MenuProductDetail
                   product={selectedProduct}
                   categoryName={activeCategory.name}
                   currency={currency}
                   compact
+                  className="min-h-full"
                 />
               ) : (
-                <div className="flex h-full min-h-[200px] items-center justify-center p-6 text-center text-sm text-muted-foreground">
+                <div className="flex min-h-full flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
                   <p>Vyberte produkt vľavo.</p>
                 </div>
               )}
