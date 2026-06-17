@@ -215,7 +215,7 @@ export function MenuBoard({
           </div>
         </div>
 
-        <div className="flex min-h-[calc(100dvh-4rem)]">
+        <div className="flex">
           <aside className="hidden text-white w-[148px] shrink-0 border-r-2 border-primary md:block lg:w-[160px] pl-3">
             <nav className="sticky top-16 flex flex-col gap-1 p-3">
               {displayCategories.map((category) => (
