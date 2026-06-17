@@ -1,0 +1,541 @@
+// Box66 — multi-tenant fastfood franchise platform
+// Schema is the source of truth for the data model (ORM = Prisma 7).
+//
+// Tenancy model:
+//   Organization (franšízant)  ->  Store (predajňa)  ->  data
+//   Profile + Membership define who can access which org/store and with what Role.
+//
+// Ownership of data:
+//   GLOBAL (centrála Box66 / superadmin):  Category, Product, Ingredient, Recipe,
+//                                          Supplier (+ StoreSupplier priradenie)
+//   PER STORE (predajňa):                  MenuItem, InventoryItem, StockMovement,
+//                                          Order, SupplierIngredient (cenník)
+//
+// Flow: Kategória -> Produkt -> Receptúra (globálna) -> Ingrediencia (globálna)
+//       Centrála priradí dodávateľa predajniam (M:N); cenník = predajňa+dodávateľ+surovina
+//       Objednávka -> automatický odpočet skladu (cez globálnu receptúru).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum Role {
+  SUPERADMIN // platforma Box66 (zakladatelia) — prístup ku všetkému
+  ADMIN //      franšízant — správa svojej organizácie a predajní
+  MANAGER //    prevádzkar — vedie predajňu, prijíma na sklad
+  STAFF //      obsluha — spracúva objednávky
+  CUSTOMER //   zákazník — objednáva
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+}
+
+enum UnitOfMeasure {
+  G // gram
+  KG // kilogram
+  ML // mililiter
+  L // liter
+  PCS // kus
+}
+
+enum OrderType {
+  DINE_IN // na mieste
+  TAKEAWAY // so sebou
+  DELIVERY // donáška
+}
+
+enum OrderStatus {
+  PENDING // čaká na potvrdenie
+  CONFIRMED // potvrdená
+  PREPARING // pripravuje sa
+  READY // pripravená na výdaj
+  COMPLETED // dokončená
+  CANCELLED // zrušená
+  REFUNDED // vrátená
+}
+
+enum PaymentStatus {
+  UNPAID
+  PROCESSING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CARD
+  CASH
+  ONLINE // Stripe
+}
+
+enum StockMovementType {
+  PURCHASE_IN // príjem na sklad (od dodávateľa)
+  SALE_OUT //    odpočet predajom (objednávka)
+  ADJUSTMENT //  inventúrna korekcia
+  WASTE //       odpis / strata
+  TRANSFER //    presun medzi predajňami
+  RETURN //      vrátenie dodávateľovi
+}
+
+// ──────────────────────────── Identity ───────────────────────────
+
+/// Zrkadlo auth.users (Supabase). id = auth.users.id
+model Profile {
+  id           String   @id @db.Uuid
+  email        String   @unique
+  fullName     String?
+  phone        String?
+  avatarUrl    String?
+  isSuperAdmin Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships      Membership[]
+  ordersAsCustomer Order[]         @relation("CustomerOrders")
+  stockMovements   StockMovement[] @relation("StockMovementCreatedBy")
+
+  @@index([email])
+  @@map("profiles")
+}
+
+/// Franšízant / prevádzkovateľ — tenant, ktorý sa pridal do franšízy.
+model Organization {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  name       String
+  slug       String   @unique
+  legalName  String?
+  ico        String? // IČO
+  dic        String? // DIČ
+  icDph      String? // IČ DPH
+  email      String?
+  phone      String?
+  address    String?
+  city       String?
+  postalCode String?
+  country    String?  @default("SK")
+  logoUrl    String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  stores      Store[]
+  memberships Membership[]
+
+  @@map("organizations")
+}
+
+/// Predajňa — fyzická prevádzka jedného franšízanta.
+model Store {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  slug           String
+  street         String?
+  city           String?
+  postalCode     String?
+  country        String?  @default("SK")
+  phone          String?
+  email          String?
+  latitude       Decimal? @db.Decimal(10, 7)
+  longitude      Decimal? @db.Decimal(10, 7)
+  openingHours   Json?
+  currency       String   @default("EUR")
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships    Membership[]
+  menuItems      MenuItem[]
+  inventoryItems InventoryItem[]
+  stockMovements StockMovement[]
+  orders         Order[]
+  storeSuppliers StoreSupplier[]
+  supplierPrices SupplierIngredient[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@map("stores")
+}
+
+/// Väzba používateľa na organizáciu (a voliteľne konkrétnu predajňu) s rolou.
+model Membership {
+  id             String           @id @default(uuid(7)) @db.Uuid
+  profileId      String           @db.Uuid
+  organizationId String           @db.Uuid
+  storeId        String?          @db.Uuid
+  role           Role             @default(STAFF)
+  status         MembershipStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  profile      Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  store        Store?       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, organizationId, storeId])
+  @@index([organizationId])
+  @@index([profileId])
+  @@map("memberships")
+}
+
+// ─────────────────────── Global catalog (superadmin) ─────────────────────
+
+/// Kategória produktov (napr. Burgre, Prílohy, Nápoje). Globálna.
+model Category {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  name        String
+  slug        String   @unique
+  description String?
+  imageUrl    String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  /// Označuje kategóriu ako „pool" pre výber v kombe (napr. „Nápoje k menu").
+  /// Z takejto kategórie sa dajú definovať skupiny výberu na kombo produktoch.
+  isChoicePool Boolean @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products     Product[]
+  choiceGroups ProductChoiceGroup[]
+
+  @@map("categories")
+}
+
+/// Produkt (napr. „Box66 Classic Burger"). Globálny — tvorí ho superadmin,
+/// dedia ho všetci franšízanti.
+model Product {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  categoryId     String   @db.Uuid
+  name           String
+  slug           String   @unique
+  description    String?
+  imageUrl       String?
+  suggestedPrice Decimal? @db.Decimal(10, 2)
+  sku            String?
+  allergens      String[]
+  kcal           Int?
+  prepMinutes    Int?
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  /// Smie byť vybraný ako voľba v kombe (napr. konkrétny nápoj). Pri produktoch
+  /// v „choice pool" kategórii rozhoduje, ktoré sa reálne ponúknu vo výbere.
+  isComboOption  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  category     Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  recipe       Recipe?
+  menuItems    MenuItem[]
+  choiceGroups ProductChoiceGroup[]
+
+  @@index([categoryId])
+  @@map("products")
+}
+
+/// Skupina výberu na kombo produkte (napr. „Vyber nápoj"). Definuje, z ktorej
+/// kategórie (poolu) si zákazník vyberá a koľko položiek musí/môže zvoliť.
+model ProductChoiceGroup {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  productId  String   @db.Uuid // kombo produkt, ku ktorému skupina patrí
+  categoryId String   @db.Uuid // pool kategória, z ktorej sa vyberá
+  label      String // napr. „Vyber nápoj"
+  minSelect  Int      @default(1)
+  maxSelect  Int      @default(1)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  product  Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  choices  OrderItemChoice[]
+
+  @@index([productId])
+  @@index([categoryId])
+  @@map("product_choice_groups")
+}
+
+/// Ingrediencia / skladová položka. Globálna — spravuje ju výhradne centrála Box66.
+model Ingredient {
+  id        String        @id @default(uuid(7)) @db.Uuid
+  name      String        @unique
+  sku       String?
+  imageUrl  String?
+  unit      UnitOfMeasure @default(PCS)
+  isActive  Boolean       @default(true)
+  notes     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  recipeItems    RecipeItem[]
+  inventoryItems InventoryItem[]
+  stockMovements StockMovement[]
+  supplierPrices SupplierIngredient[]
+
+  @@map("ingredients")
+}
+
+/// Dodávateľ — globálna entita; centrála rozhoduje, ktoré predajne ho môžu používať.
+model Supplier {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  ico         String?
+  dic         String?
+  notes       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  storeLinks     StoreSupplier[]
+  prices         SupplierIngredient[]
+  stockMovements StockMovement[]
+
+  @@map("suppliers")
+}
+
+/// M:N — ktoré predajne môžu od ktorého dodávateľa odoberať (schválené centrálou).
+model StoreSupplier {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  storeId    String   @db.Uuid
+  supplierId String   @db.Uuid
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, supplierId])
+  @@index([supplierId])
+  @@map("store_suppliers")
+}
+
+/// Cenník: kombinácia predajňa + dodávateľ + ingrediencia (ceny sa líšia per predajňa).
+model SupplierIngredient {
+  id           String         @id @default(uuid(7)) @db.Uuid
+  storeId      String         @db.Uuid
+  supplierId   String         @db.Uuid
+  ingredientId String         @db.Uuid
+  sku          String?
+  packageSize  Decimal?       @db.Decimal(12, 3)
+  packageUnit  UnitOfMeasure?
+  price        Decimal?       @db.Decimal(10, 2)
+  currency     String         @default("EUR")
+  leadTimeDays Int?
+  isPreferred  Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  store      Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  supplier   Supplier   @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, supplierId, ingredientId])
+  @@index([supplierId])
+  @@index([ingredientId])
+  @@map("supplier_ingredients")
+}
+
+/// Receptúra produktu — globálna, jedna na produkt; spravuje ju centrála Box66.
+model Recipe {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  productId    String   @unique @db.Uuid
+  name         String?
+  yield        Int      @default(1) // koľko porcií receptúra vyrobí
+  instructions String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  product Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  items   RecipeItem[]
+
+  @@map("recipes")
+}
+
+/// Položka receptúry — ingrediencia a jej množstvo.
+model RecipeItem {
+  id           String        @id @default(uuid(7)) @db.Uuid
+  recipeId     String        @db.Uuid
+  ingredientId String        @db.Uuid
+  quantity     Decimal       @db.Decimal(12, 3)
+  unit         UnitOfMeasure
+  notes        String?
+
+  recipe     Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+
+  @@unique([recipeId, ingredientId])
+  @@index([ingredientId])
+  @@map("recipe_items")
+}
+
+// ──────────────────────────── Per-store ──────────────────────────
+
+/// Položka menu predajne — predajňa zapne produkt a nastaví cenu/dostupnosť.
+model MenuItem {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  storeId     String   @db.Uuid
+  productId   String   @db.Uuid
+  price       Decimal  @db.Decimal(10, 2)
+  isAvailable Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  store      Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@unique([storeId, productId])
+  @@index([storeId])
+  @@map("menu_items")
+}
+
+/// Aktuálny stav skladu ingrediencie v predajni.
+model InventoryItem {
+  id            String        @id @default(uuid(7)) @db.Uuid
+  storeId       String        @db.Uuid
+  ingredientId  String        @db.Uuid
+  quantity      Decimal       @default(0) @db.Decimal(12, 3)
+  unit          UnitOfMeasure
+  reorderLevel  Decimal?      @db.Decimal(12, 3)
+  lastCountedAt DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  store      Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, ingredientId])
+  @@index([storeId])
+  @@map("inventory_items")
+}
+
+/// Pohyb skladu — kniha príjmov/výdajov/korekcií. Príjem robí prevádzkar,
+/// výdaj (SALE_OUT) sa generuje automaticky pri objednávke.
+model StockMovement {
+  id           String            @id @default(uuid(7)) @db.Uuid
+  storeId      String            @db.Uuid
+  ingredientId String            @db.Uuid
+  type         StockMovementType
+  quantity     Decimal           @db.Decimal(12, 3) // kladné = prírastok, záporné = úbytok
+  unit         UnitOfMeasure
+  unitCost     Decimal?          @db.Decimal(10, 4)
+  reference    String? // číslo dodacieho listu / faktúry
+  note         String?
+  supplierId   String?           @db.Uuid
+  orderId      String?           @db.Uuid
+  createdById  String?           @db.Uuid
+  createdAt    DateTime          @default(now())
+
+  store      Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  supplier   Supplier?  @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  order      Order?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdBy  Profile?   @relation("StockMovementCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([storeId])
+  @@index([ingredientId])
+  @@index([orderId])
+  @@map("stock_movements")
+}
+
+// ──────────────────────────── Orders ─────────────────────────────
+
+/// Objednávka v konkrétnej predajni.
+model Order {
+  id          String  @id @default(uuid(7)) @db.Uuid
+  orderNumber Int // poradové číslo v rámci predajne
+  storeId     String  @db.Uuid
+  customerId  String? @db.Uuid
+
+  type          OrderType      @default(TAKEAWAY)
+  status        OrderStatus    @default(PENDING)
+  paymentStatus PaymentStatus  @default(UNPAID)
+  paymentMethod PaymentMethod?
+
+  subtotal      Decimal @default(0) @db.Decimal(10, 2)
+  taxTotal      Decimal @default(0) @db.Decimal(10, 2)
+  discountTotal Decimal @default(0) @db.Decimal(10, 2)
+  total         Decimal @default(0) @db.Decimal(10, 2)
+  currency      String  @default("EUR")
+
+  stripeSessionId       String?
+  stripePaymentIntentId String?
+
+  customerName  String?
+  customerEmail String?
+  customerPhone String?
+  note          String?
+
+  placedAt    DateTime  @default(now())
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  store          Store           @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  customer       Profile?        @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: SetNull)
+  items          OrderItem[]
+  stockMovements StockMovement[]
+
+  @@unique([storeId, orderNumber])
+  @@index([storeId])
+  @@index([customerId])
+  @@index([status])
+  @@map("orders")
+}
+
+/// Položka objednávky — so snímkou názvu a ceny v čase objednania.
+model OrderItem {
+  id         String  @id @default(uuid(7)) @db.Uuid
+  orderId    String  @db.Uuid
+  menuItemId String? @db.Uuid
+  productId  String? @db.Uuid
+
+  nameSnapshot String
+  unitPrice    Decimal @db.Decimal(10, 2)
+  quantity     Int     @default(1)
+  lineTotal    Decimal @db.Decimal(10, 2)
+  note         String?
+
+  order    Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem?         @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+  choices  OrderItemChoice[]
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+/// Konkrétny výber zákazníka v kombe (napr. zvolený nápoj k menu). Drží snímky
+/// názvu/skupiny a odkaz na vybraný produkt — z neho sa odpočíta sklad (receptúra).
+model OrderItemChoice {
+  id          String  @id @default(uuid(7)) @db.Uuid
+  orderItemId String  @db.Uuid
+  groupId     String? @db.Uuid // ProductChoiceGroup (môže byť neskôr zmazaná)
+  productId   String? @db.Uuid // vybraný produkt (zdroj receptúry pre sklad)
+  menuItemId  String? @db.Uuid // vybraná položka menu predajne (informačne)
+
+  groupLabel   String // snímka názvu skupiny v čase objednania
+  nameSnapshot String // snímka názvu vybraného produktu
+  createdAt    DateTime @default(now())
+
+  orderItem OrderItem           @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  group     ProductChoiceGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  @@index([orderItemId])
+  @@map("order_item_choices")
+}
