@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MapPin, Phone, Mail } from "lucide-react";
 
+import { Logo } from "@/components/brand/logo";
 import type { StoreContact } from "@/lib/menu/presentation";
 
 export function SiteFooter({ store }: { store: StoreContact | null }) {
@@ -11,41 +12,38 @@ export function SiteFooter({ store }: { store: StoreContact | null }) {
     : null;
 
   return (
-    <footer className="mt-auto border-t bg-muted/30">
+    <footer className="mt-auto border-t border-background/10 bg-foreground text-background">
       <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-3">
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-              66
-            </span>
-            <span className="text-lg font-semibold tracking-tight">Box66</span>
-          </div>
-          <p className="max-w-xs text-sm text-muted-foreground">
-            Čerstvý fastfood pripravený z poctivých surovín. Objednaj online a
-            vyzdvihni si svoj box.
+          <Link href="/" className="inline-flex text-background">
+            <Logo />
+            <span className="sr-only">Box66</span>
+          </Link>
+          <p className="max-w-xs text-sm text-background/70">
+            Your favourite box
           </p>
         </div>
 
         <div className="space-y-3">
           <h3 className="text-sm font-semibold">Navigácia</h3>
-          <ul className="space-y-2 text-sm text-muted-foreground">
+          <ul className="space-y-2 text-sm text-background/70">
             <li>
-              <Link href="/menu" className="hover:text-foreground">
+              <Link href="/menu" className="hover:text-background">
                 Menu
               </Link>
             </li>
             <li>
-              <Link href="/o-nas" className="hover:text-foreground">
+              <Link href="/o-nas" className="hover:text-background">
                 O nás
               </Link>
             </li>
             <li>
-              <Link href="/kontakt" className="hover:text-foreground">
+              <Link href="/kontakt" className="hover:text-background">
                 Kontakt
               </Link>
             </li>
             <li>
-              <Link href="/" className="hover:text-foreground">
+              <Link href="/" className="hover:text-background">
                 Objednať online
               </Link>
             </li>
@@ -54,7 +52,7 @@ export function SiteFooter({ store }: { store: StoreContact | null }) {
 
         <div className="space-y-3">
           <h3 className="text-sm font-semibold">{store?.name ?? "Box66"}</h3>
-          <ul className="space-y-2 text-sm text-muted-foreground">
+          <ul className="space-y-2 text-sm text-background/70">
             {addressLine && (
               <li className="flex items-start gap-2">
                 <MapPin className="mt-0.5 size-4 shrink-0" />
@@ -64,7 +62,7 @@ export function SiteFooter({ store }: { store: StoreContact | null }) {
             {store?.phone && (
               <li className="flex items-center gap-2">
                 <Phone className="size-4 shrink-0" />
-                <a href={`tel:${store.phone}`} className="hover:text-foreground">
+                <a href={`tel:${store.phone}`} className="hover:text-background">
                   {store.phone}
                 </a>
               </li>
@@ -74,7 +72,7 @@ export function SiteFooter({ store }: { store: StoreContact | null }) {
                 <Mail className="size-4 shrink-0" />
                 <a
                   href={`mailto:${store.email}`}
-                  className="hover:text-foreground"
+                  className="hover:text-background"
                 >
                   {store.email}
                 </a>
@@ -84,8 +82,8 @@ export function SiteFooter({ store }: { store: StoreContact | null }) {
         </div>
       </div>
 
-      <div className="border-t">
-        <div className="mx-auto w-full max-w-6xl px-4 py-4 text-center text-xs text-muted-foreground sm:px-6">
+      <div className="border-t border-background/10">
+        <div className="mx-auto w-full max-w-6xl px-4 py-4 text-center text-xs text-background/60 sm:px-6">
           © {new Date().getFullYear()} Box66. Všetky práva vyhradené.
         </div>
       </div>

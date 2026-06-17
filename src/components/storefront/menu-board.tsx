@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Flame, ImageIcon, Info, Plus, Wheat } from "lucide-react";
+import { CategoryTab } from "@/components/storefront/category-tab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -71,74 +72,6 @@ function ItemInfoPopover({ item }: { item: MenuItemDTO }) {
         </div>
       </PopoverContent>
     </Popover>
-  );
-}
-
-function CategoryTab({
-  category,
-  isActive,
-  onClick,
-  layout,
-}: {
-  category: MenuCategoryDTO;
-  isActive: boolean;
-  onClick: () => void;
-  layout: "mobile" | "desktop";
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "group flex shrink-0 flex-col items-center gap-2 transition-colors",
-        layout === "mobile"
-          ? "w-[76px] px-1 py-2"
-          : "w-full px-3 py-3.5",
-        isActive
-          ? layout === "mobile"
-            ? "border-2 border-primary"
-            : "border-2 border-primary"
-          : layout === "desktop"
-            ? "border-2 border-transparent"
-            : "border-2 border-transparent",
-      )}
-    >
-      <div
-        className={cn(
-          "relative overflow-hidden",
-          layout === "mobile" ? "size-14" : "size-20",
-          isActive && "ring-primary/30",
-        )}
-      >
-        {category.imageUrl ? (
-          <Image
-            src={category.imageUrl}
-            alt=""
-            fill
-            sizes={layout === "mobile" ? "56px" : "80px"}
-            className="object-contain"
-          />
-        ) : (
-          <div className="flex size-full items-center justify-center">
-            <ImageIcon
-              className={cn(
-                "text-muted-foreground",
-                layout === "mobile" ? "size-7" : "size-9",
-              )}
-            />
-          </div>
-        )}
-      </div>
-      <span
-        className={cn(
-          "line-clamp-2 text-center leading-tight",
-          layout === "mobile" ? "text-xs" : "text-sm",
-          isActive ? "font-semibold text-foreground" : "text-muted-foreground",
-        )}
-      >
-        {category.name}
-      </span>
-    </button>
   );
 }
 

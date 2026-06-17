@@ -28,6 +28,7 @@ export type PresentationCategory = {
   id: string;
   name: string;
   description: string | null;
+  imageUrl: string | null;
   items: PresentationItem[];
 };
 
@@ -42,7 +43,13 @@ const productSelect = {
   kcal: true,
   prepMinutes: true,
   category: {
-    select: { id: true, name: true, description: true, sortOrder: true },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      imageUrl: true,
+      sortOrder: true,
+    },
   },
   recipe: {
     select: {
@@ -67,7 +74,12 @@ type MenuItemWithProduct = {
     allergens: string[];
     kcal: number | null;
     prepMinutes: number | null;
-    category: { id: string; name: string; description: string | null };
+    category: {
+      id: string;
+      name: string;
+      description: string | null;
+      imageUrl: string | null;
+    };
     recipe: { isActive: boolean; items: { ingredient: { name: string; imageUrl: string | null } }[] } | null;
   };
 };
@@ -120,6 +132,7 @@ export async function getPresentationMenu(
         id: cat.id,
         name: cat.name,
         description: cat.description,
+        imageUrl: cat.imageUrl,
         items: [],
       });
     }

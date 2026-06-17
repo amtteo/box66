@@ -27,3 +27,10 @@ export type AuthFormState =
       values?: Record<string, string>;
     }
   | undefined;
+
+export type CheckoutSignInState =
+  | {
+      ok: true;
+      customer: { name?: string; email: string };
+    }
+  | AuthFormState;

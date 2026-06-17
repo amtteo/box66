@@ -6,14 +6,6 @@ import { useActionState, useId } from "react";
 import { signIn } from "@/lib/auth/actions";
 import type { AuthFormState } from "@/lib/auth/schemas";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldError, FormMessage } from "@/components/auth/form-feedback";
@@ -24,7 +16,7 @@ export type SignInFormProps = {
   showSignUpLink?: boolean;
 };
 
-function signInDescription(redirectTo: string) {
+export function signInDescription(redirectTo: string) {
   return redirectTo.startsWith("/admin")
     ? "Prihlás sa do administrácie Box66."
     : "Prihlás sa a predvyplníme tvoje údaje pri objednávke.";
@@ -76,19 +68,24 @@ export function SignInForm({
 
   const footer = (
     <>
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className="w-full h-14 bg-yellow-400 hover:bg-yellow-500 text-primary font-bold text-md" disabled={pending}>
         {pending ? "Prihlasujem…" : "Prihlásiť sa"}
       </Button>
       {showSignUpLink && (
-        <p className="text-center text-sm text-muted-foreground">
-          Nemáš účet?{" "}
+        <div className="text-center text-sm text-muted-foreground mt-8 flex flex-col gap-8">
           <Link
             href={`/registracia?redirect=${encodeURIComponent(redirectTo)}`}
             className="text-foreground underline"
           >
-            Zaregistruj sa
+            Vytvorit účet
           </Link>
-        </p>
+          <Link
+            href="/"
+            className="text-foreground underline"
+          >
+            Uvodná stránka
+          </Link>
+        </div>
       )}
     </>
   );
@@ -96,26 +93,18 @@ export function SignInForm({
   if (variant === "inline") {
     return (
       <form action={action} className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold">Prihlásenie</h2>
-          <p className="text-sm text-muted-foreground">{description}</p>
-        </div>
         <div className="space-y-4">{fields}</div>
-        <div className="flex flex-col gap-4">{footer}</div>
+        <div className="flex flex-col gap-4 mt-4">{footer}</div>
       </form>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Prihlásenie</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
+    <div className="p-8">
       <form action={action}>
-        <CardContent className="space-y-4">{fields}</CardContent>
-        <CardFooter className="mt-6 flex-col gap-4">{footer}</CardFooter>
+        <div className="space-y-4">{fields}</div>
+        <div className="mt-6 flex-col gap-4">{footer}</div>
       </form>
-    </Card>
+    </div>
   );
 }

@@ -1,19 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useId } from "react";
 
 import { signUp } from "@/lib/auth/actions";
 import type { AuthFormState } from "@/lib/auth/schemas";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldError, FormMessage } from "@/components/auth/form-feedback";
@@ -23,23 +15,21 @@ export function SignUpForm({ redirectTo = "/" }: { redirectTo?: string }) {
     signUp,
     undefined,
   );
+  const id = useId();
+  const fullNameId = `${id}-fullName`;
+  const emailId = `${id}-email`;
+  const passwordId = `${id}-password`;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Registrácia</CardTitle>
-        <CardDescription>
-          Vytvor si účet a nabudúce objednáš rýchlejšie.
-        </CardDescription>
-      </CardHeader>
+    <div className="p-8">
       <form action={action}>
-        <CardContent className="space-y-4">
+        <div className="space-y-4">
           <FormMessage message={state?.message} />
           <input type="hidden" name="redirect" value={redirectTo} />
           <div className="space-y-2">
-            <Label htmlFor="fullName">Meno a priezvisko</Label>
+            <Label htmlFor={fullNameId}>Meno a priezvisko</Label>
             <Input
-              id="fullName"
+              id={fullNameId}
               name="fullName"
               autoComplete="name"
               defaultValue={state?.values?.fullName}
@@ -48,9 +38,9 @@ export function SignUpForm({ redirectTo = "/" }: { redirectTo?: string }) {
             <FieldError messages={state?.errors?.fullName} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">E-mail</Label>
+            <Label htmlFor={emailId}>E-mail</Label>
             <Input
-              id="email"
+              id={emailId}
               name="email"
               type="email"
               autoComplete="email"
@@ -60,9 +50,9 @@ export function SignUpForm({ redirectTo = "/" }: { redirectTo?: string }) {
             <FieldError messages={state?.errors?.email} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Heslo</Label>
+            <Label htmlFor={passwordId}>Heslo</Label>
             <Input
-              id="password"
+              id={passwordId}
               name="password"
               type="password"
               autoComplete="new-password"
@@ -73,22 +63,28 @@ export function SignUpForm({ redirectTo = "/" }: { redirectTo?: string }) {
               Aspoň 8 znakov, jedno písmeno a jedno číslo.
             </p>
           </div>
-        </CardContent>
-        <CardFooter className="mt-6 flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={pending}>
+        </div>
+        <div className="mt-6 flex-col gap-4">
+          <Button
+            type="submit"
+            className="w-full h-14 bg-yellow-400 hover:bg-yellow-500 text-primary font-bold text-md"
+            disabled={pending}
+          >
             {pending ? "Vytváram účet…" : "Zaregistrovať sa"}
           </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            Už máš účet?{" "}
+          <div className="text-center text-sm text-muted-foreground mt-8 flex flex-col gap-8">
             <Link
               href={`/prihlasenie?redirect=${encodeURIComponent(redirectTo)}`}
               className="text-foreground underline"
             >
-              Prihlás sa
+              Prihlásiť sa
             </Link>
-          </p>
-        </CardFooter>
+            <Link href="/" className="text-foreground underline">
+              Uvodná stránka
+            </Link>
+          </div>
+        </div>
       </form>
-    </Card>
+    </div>
   );
 }

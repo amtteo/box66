@@ -4,10 +4,12 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
 import {
   SignInSchema,
   SignUpSchema,
   type AuthFormState,
+  type CheckoutSignInState,
 } from "@/lib/auth/schemas";
 import {
   ACTIVE_ORG_COOKIE,
@@ -48,6 +50,50 @@ export async function signIn(
 
   revalidatePath("/", "layout");
   redirect(safeRedirectPath(formData.get("redirect"), "/"));
+}
+
+/** Prihlásenie v košíku — bez presmerovania, vráti údaje zákazníka na predvyplnenie. */
+export async function signInForCheckout(
+  _prev: CheckoutSignInState,
+  formData: FormData,
+): Promise<CheckoutSignInState> {
+  const parsed = SignInSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      errors: z_flatten(parsed.error),
+      values: { email: String(formData.get("email") ?? "") },
+    };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
+
+  if (error) {
+    return {
+      ok: false,
+      message: "Nesprávny e-mail alebo heslo.",
+      values: { email: parsed.data.email },
+    };
+  }
+
+  const profile = data.user
+    ? await prisma.profile.findUnique({ where: { id: data.user.id } })
+    : null;
+
+  revalidatePath("/", "layout");
+
+  return {
+    ok: true,
+    customer: {
+      name: profile?.fullName ?? undefined,
+      email: profile?.email ?? parsed.data.email,
+    },
+  };
 }
 
 export async function signUp(

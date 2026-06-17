@@ -1,14 +1,18 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
+  CreditCard,
   ImageIcon,
   Minus,
   Plus,
   ShoppingCart,
   Trash2,
+  User,
+  type LucideIcon,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -33,7 +37,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { FieldError, FormMessage } from "@/components/admin/form-feedback";
-import { SignInDialog } from "@/components/auth/sign-in-dialog";
+import { CartSignInBanner } from "@/components/storefront/cart-sign-in-banner";
 import { useCart } from "@/components/storefront/cart-context";
 import { StripeCheckout } from "@/components/storefront/stripe-checkout";
 import { cn } from "@/lib/utils";
@@ -68,9 +72,15 @@ export function CartSheet({
 }) {
   const { lines, totalQuantity, subtotal, setQuantity, remove, clear } =
     useCart();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<View>("cart");
   const [pending, startTransition] = useTransition();
+  const [signedIn, setSignedIn] = useState(isAuthed);
+  const [customerName, setCustomerName] = useState(defaultCustomer?.name ?? "");
+  const [customerEmail, setCustomerEmail] = useState(
+    defaultCustomer?.email ?? "",
+  );
 
   const [orderType, setOrderType] = useState<OrderType>(OrderType.TAKEAWAY);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
@@ -82,7 +92,13 @@ export function CartSheet({
   const [clientSecret, setClientSecret] = useState<string>();
   const [orderId, setOrderId] = useState<string>();
   const [success, setSuccess] = useState<OrderStatusInfo>();
-  const [signInOpen, setSignInOpen] = useState(false);
+
+  function handleSignInSuccess(customer: { name?: string; email: string }) {
+    setSignedIn(true);
+    if (customer.name) setCustomerName(customer.name);
+    setCustomerEmail(customer.email);
+    router.refresh();
+  }
 
   function resetOnClose(next: boolean) {
     setOpen(next);
@@ -228,114 +244,123 @@ export function CartSheet({
             )}
 
             {view === "checkout" && (
-              <form
-                id="checkout-form"
-                action={handlePlaceOrder}
-                className="space-y-5"
-              >
+              <div className="space-y-6">
                 <FormMessage message={error} />
 
-                {!isAuthed && (
-                  <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                    Máš účet?{" "}
-                    <button
-                      type="button"
-                      onClick={() => setSignInOpen(true)}
-                      className="font-medium text-foreground underline"
-                    >
-                      Prihlás sa
-                    </button>{" "}
-                    a predvyplníme tvoje údaje.
-                  </p>
+                {!signedIn && (
+                  <CartSignInBanner onSuccess={handleSignInSuccess} />
                 )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="customerName">Meno</Label>
-                  <Input
-                    id="customerName"
-                    name="customerName"
-                    placeholder="Tvoje meno"
-                    defaultValue={defaultCustomer?.name}
-                    autoComplete="name"
-                  />
-                  <FieldError messages={fieldErrors?.customerName} />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="customerEmail">E-mail</Label>
-                    <Input
-                      id="customerEmail"
-                      name="customerEmail"
-                      type="email"
-                      placeholder="email@example.com"
-                      defaultValue={defaultCustomer?.email}
-                      autoComplete="email"
+                <form
+                  id="checkout-form"
+                  action={handlePlaceOrder}
+                  className="space-y-6"
+                >
+                <div className="grid gap-8 md:grid-cols-2">
+                  <section className="space-y-4">
+                    <CheckoutSectionHeader
+                      icon={User}
+                      title="Informácie zákazníka"
                     />
-                    <FieldError messages={fieldErrors?.customerEmail} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="customerPhone">Telefón</Label>
-                    <Input
-                      id="customerPhone"
-                      name="customerPhone"
-                      type="tel"
-                      placeholder="+421…"
-                      autoComplete="tel"
+
+                    <div className="space-y-2">
+                      <Label htmlFor="customerName">Meno</Label>
+                      <Input
+                        id="customerName"
+                        name="customerName"
+                        placeholder="Tvoje meno"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        autoComplete="name"
+                      />
+                      <FieldError messages={fieldErrors?.customerName} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="customerEmail">E-mail</Label>
+                      <Input
+                        id="customerEmail"
+                        name="customerEmail"
+                        type="email"
+                        placeholder="email@example.com"
+                        value={customerEmail}
+                        onChange={(e) => setCustomerEmail(e.target.value)}
+                        autoComplete="email"
+                      />
+                      <FieldError messages={fieldErrors?.customerEmail} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="customerPhone">Telefón</Label>
+                      <Input
+                        id="customerPhone"
+                        name="customerPhone"
+                        type="tel"
+                        placeholder="+421…"
+                        autoComplete="tel"
+                      />
+                      <FieldError messages={fieldErrors?.customerPhone} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="orderType">Spôsob odberu</Label>
+                      <Select
+                        value={orderType}
+                        onValueChange={(v) => setOrderType(v as OrderType)}
+                      >
+                        <SelectTrigger id="orderType" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CHECKOUT_ORDER_TYPES.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {ORDER_TYPE_LABEL[t]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="note">Poznámka</Label>
+                      <Textarea
+                        id="note"
+                        name="note"
+                        rows={2}
+                        placeholder="Napr. bez cibule…"
+                      />
+                    </div>
+                  </section>
+
+                  <section className="space-y-4">
+                    <CheckoutSectionHeader
+                      icon={CreditCard}
+                      title="Spôsob platby"
                     />
-                    <FieldError messages={fieldErrors?.customerPhone} />
-                  </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="orderType">Spôsob odberu</Label>
-                  <Select
-                    value={orderType}
-                    onValueChange={(v) => setOrderType(v as OrderType)}
-                  >
-                    <SelectTrigger id="orderType" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CHECKOUT_ORDER_TYPES.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {ORDER_TYPE_LABEL[t]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <fieldset className="space-y-2">
+                      <Label>Zvoľte spôsob platby</Label>
+                      {onlinePaymentEnabled && (
+                        <PaymentOption
+                          checked={paymentMethod === PaymentMethod.ONLINE}
+                          onSelect={() =>
+                            setPaymentMethod(PaymentMethod.ONLINE)
+                          }
+                          title="Online kartou"
+                          description="Zaplatíš hneď cez Stripe."
+                        />
+                      )}
+                      <PaymentOption
+                        checked={paymentMethod === PaymentMethod.CASH}
+                        onSelect={() => setPaymentMethod(PaymentMethod.CASH)}
+                        title="V hotovosti pri prevzatí"
+                        description="Zaplatíš pri vyzdvihnutí objednávky."
+                      />
+                    </fieldset>
+                  </section>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="note">Poznámka (voliteľné)</Label>
-                  <Textarea
-                    id="note"
-                    name="note"
-                    rows={2}
-                    placeholder="Napr. bez cibule…"
-                  />
-                </div>
-
-                <fieldset className="space-y-2">
-                  <legend className="mb-1 text-sm font-medium">
-                    Spôsob platby
-                  </legend>
-                  {onlinePaymentEnabled && (
-                    <PaymentOption
-                      checked={paymentMethod === PaymentMethod.ONLINE}
-                      onSelect={() => setPaymentMethod(PaymentMethod.ONLINE)}
-                      title="Online kartou"
-                      description="Zaplatíš hneď cez Stripe."
-                    />
-                  )}
-                  <PaymentOption
-                    checked={paymentMethod === PaymentMethod.CASH}
-                    onSelect={() => setPaymentMethod(PaymentMethod.CASH)}
-                    title="V hotovosti pri prevzatí"
-                    description="Zaplatíš pri vyzdvihnutí objednávky."
-                  />
-                </fieldset>
               </form>
+              </div>
             )}
 
             {view === "payment" && clientSecret && (
@@ -351,19 +376,21 @@ export function CartSheet({
 
         {(view === "cart" || view === "checkout" || view === "success") && (
           <div className="border-t bg-background">
-            <div className="mx-auto w-full max-w-2xl space-y-3 p-4">
-              {view !== "success" && (
-                <div className="flex items-center justify-between text-base font-semibold">
-                  <span>Spolu</span>
-                  <span className="tabular-nums">
+            <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-4 p-4">
+              {view !== "success" ? (
+                <div className="flex items-baseline gap-3">
+                  <span className="text-xl font-bold">Spolu</span>
+                  <span className="text-2xl font-bold tabular-nums">
                     {formatMoney(subtotal, currency)}
                   </span>
                 </div>
+              ) : (
+                <div />
               )}
 
               {view === "cart" && (
                 <Button
-                  className="w-full"
+                  className="shrink-0 px-8"
                   size="lg"
                   disabled={lines.length === 0}
                   onClick={() => {
@@ -371,7 +398,7 @@ export function CartSheet({
                     setView("checkout");
                   }}
                 >
-                  Pokračovať k objednávke
+                  Pokračovať
                 </Button>
               )}
 
@@ -379,21 +406,21 @@ export function CartSheet({
                 <Button
                   type="submit"
                   form="checkout-form"
-                  className="w-full"
+                  className="shrink-0 px-8"
                   size="lg"
                   disabled={pending || lines.length === 0}
                 >
                   {pending
                     ? "Spracúvam…"
                     : paymentMethod === PaymentMethod.ONLINE
-                      ? "Prejsť na platbu"
+                      ? "Zaplatiť"
                       : "Objednať"}
                 </Button>
               )}
 
               {view === "success" && (
                 <Button
-                  className="w-full"
+                  className="shrink-0 px-8"
                   size="lg"
                   onClick={() => resetOnClose(false)}
                 >
@@ -405,12 +432,6 @@ export function CartSheet({
         )}
       </SheetContent>
     </Sheet>
-
-      <SignInDialog
-        redirectTo="/"
-        open={signInOpen}
-        onOpenChange={setSignInOpen}
-      />
     </>
   );
 }
@@ -438,27 +459,27 @@ function CartView({
   return (
     <ul className="divide-y">
       {lines.map((line) => (
-        <li key={line.lineId} className="flex items-center gap-3 py-3">
-          <div className="relative size-14 shrink-0 overflow-hidden rounded-md border bg-muted">
+        <li key={line.lineId} className="flex items-center gap-4 py-4">
+          <div className="relative size-20 shrink-0 overflow-hidden rounded-lg border bg-muted">
             {line.imageUrl ? (
               <Image
                 src={line.imageUrl}
                 alt={line.name}
                 fill
-                sizes="56px"
+                sizes="80px"
                 className="object-cover"
               />
             ) : (
               <div className="flex size-full items-center justify-center">
-                <ImageIcon className="size-5 text-muted-foreground" />
+                <ImageIcon className="size-7 text-muted-foreground" />
               </div>
             )}
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="truncate font-medium">{line.name}</p>
+            <p className="truncate text-lg font-semibold">{line.name}</p>
             {line.choices.length > 0 && (
-              <p className="truncate text-xs text-muted-foreground">
+              <p className="truncate text-sm text-muted-foreground">
                 {line.choices.map((c) => c.name).join(", ")}
               </p>
             )}
@@ -467,40 +488,59 @@ function CartView({
             </p>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <Button
-              variant="outline"
-              size="icon-sm"
+              variant="ghost"
+              size="icon"
+              className="size-10"
               onClick={() => setQuantity(line.lineId, line.quantity - 1)}
             >
-              <Minus className="size-4" />
+              <Minus className="size-6" />
             </Button>
-            <span className="w-6 text-center tabular-nums">{line.quantity}</span>
+            <span className="min-w-8 text-center text-lg font-semibold tabular-nums">
+              {line.quantity}
+            </span>
             <Button
-              variant="outline"
-              size="icon-sm"
+              variant="ghost"
+              size="icon"
+              className="size-10"
               onClick={() => setQuantity(line.lineId, line.quantity + 1)}
             >
-              <Plus className="size-4" />
+              <Plus className="size-6" />
             </Button>
           </div>
 
-          <div className="w-20 text-right font-medium tabular-nums">
+          <div className="w-24 text-right text-lg font-semibold tabular-nums">
             {formatMoney(line.price * line.quantity, currency)}
           </div>
 
           <Button
             variant="ghost"
-            size="icon-sm"
-            className="text-muted-foreground hover:text-destructive"
+            size="icon"
+            className="size-10 text-muted-foreground hover:text-destructive"
             onClick={() => remove(line.lineId)}
           >
-            <Trash2 className="size-4" />
+            <Trash2 className="size-5" />
             <span className="sr-only">Odstrániť</span>
           </Button>
         </li>
       ))}
     </ul>
+  );
+}
+
+function CheckoutSectionHeader({
+  icon: Icon,
+  title,
+}: {
+  icon: LucideIcon;
+  title: string;
+}) {
+  return (
+    <div className="mb-2 flex items-center gap-4 py-12">
+      <Icon className="size-8 text-primary" strokeWidth={1.5} />
+      <h2 className="text-md font-bold">{title}</h2>
+    </div>
   );
 }
 
