@@ -49,11 +49,7 @@ export default async function MenuItemPage({
         </Link>
       </Button>
 
-      <MenuProductDetail
-        product={product}
-        categoryName={product.categoryName}
-        currency={currency}
-      />
+      <MenuProductDetail product={product} currency={currency} />
     </div>
   );
 }

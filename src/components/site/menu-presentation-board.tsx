@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ImageIcon } from "lucide-react";
+import { ImageIcon, Hamburger } from "lucide-react";
 
 import { CategoryTab } from "@/components/storefront/category-tab";
 import { MenuProductDetail } from "@/components/site/menu-product-detail";
@@ -187,13 +187,13 @@ export function MenuPresentationBoard({
               {selectedProduct ? (
                 <MenuProductDetail
                   product={selectedProduct}
-                  categoryName={activeCategory.name}
                   currency={currency}
                   compact
                   className="min-h-full"
                 />
               ) : (
-                <div className="flex min-h-full flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+                <div className="flex flex-col min-h-full flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+                  <Hamburger className="size-24 mb-4 text-zinc-300" />
                   <p>Vyberte produkt vľavo.</p>
                 </div>
               )}
@@ -234,11 +234,11 @@ export function MenuPresentationBoard({
           {selectedProduct && activeCategory ? (
             <MenuProductDetail
               product={selectedProduct}
-              categoryName={activeCategory.name}
               currency={currency}
             />
           ) : (
-            <div className="flex h-full min-h-[320px] items-center justify-center p-8 text-center text-muted-foreground">
+            <div className="flex flex-col h-full min-h-[320px] items-center justify-center p-8 text-center text-muted-foreground">
+              <Hamburger className="size-24 mb-4 text-zinc-300" />
               <p>Vyberte produkt pre zobrazenie detailu.</p>
             </div>
           )}

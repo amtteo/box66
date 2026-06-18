@@ -1,10 +1,9 @@
 import Image from "next/image";
-import { Flame, ImageIcon } from "lucide-react";
+import { Flame, ImageIcon, Wheat } from "lucide-react";
 
 import { ALLERGENS } from "@/lib/catalog/schemas";
 import { formatMoney } from "@/lib/orders/types";
 import type { PresentationItem } from "@/lib/menu/presentation";
-import { Badge } from "@/components/ui/badge";
 import { IngredientCompositionStrip } from "@/components/site/ingredient-display";
 import { cn } from "@/lib/utils";
 
@@ -12,17 +11,21 @@ const ALLERGEN_LABEL = new Map(ALLERGENS.map((a) => [a.code, a.label]));
 
 export function MenuProductDetail({
   product,
-  categoryName,
   currency,
   compact = false,
   className,
 }: {
   product: PresentationItem;
-  categoryName: string;
   currency: string;
   compact?: boolean;
   className?: string;
 }) {
+  const hasKcal = product.kcal != null;
+  const hasAllergens = product.allergens.length > 0;
+  const allergenLabels = product.allergens.map(
+    (code) => ALLERGEN_LABEL.get(code) ?? code,
+  );
+
   return (
     <div className={cn("flex flex-col overflow-y-auto", className)}>
       <div className="relative aspect-[4/3] w-full">
@@ -43,9 +46,6 @@ export function MenuProductDetail({
 
       <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
         <div>
-          <Badge variant="secondary" className="mb-2">
-            {categoryName}
-          </Badge>
           <h1
             className={cn(
               "font-semibold tracking-tight",
@@ -70,23 +70,34 @@ export function MenuProductDetail({
           </p>
         )}
 
-        {product.kcal != null && (
-          <div className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
-            <Flame className="size-4 text-muted-foreground" />
-            <span className="font-medium tabular-nums">
-              {product.kcal} kcal
-            </span>
+        {(hasKcal || hasAllergens) && (
+          <div className="space-y-3">
+            {hasKcal && (
+              <div className="flex items-start gap-2.5">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-200">
+                  <Flame className="size-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs">Energia</p>
+                  <p className="text-sm font-medium">{product.kcal} kcal</p>
+                </div>
+              </div>
+            )}
+            {hasAllergens && (
+              <div className="flex items-start gap-2.5">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-200">
+                  <Wheat className="size-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs">Alergény</p>
+                  <p className="text-sm font-medium">
+                    {allergenLabels.join(", ")}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
-
-        <p className="text-xs text-foreground sm:text-sm">
-          <span className="font-semibold">Alergény:</span>{" "}
-          {product.allergens.length > 0
-            ? product.allergens
-                .map((code) => ALLERGEN_LABEL.get(code) ?? code)
-                .join(", ")
-            : "bez deklarovaných alergénov"}
-        </p>
 
         {product.ingredients.length > 0 && (
           <section className="mt-10 pb-10">
