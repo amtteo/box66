@@ -3,16 +3,19 @@
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
-import { getUser, requireProfile, Role } from "@/lib/auth/dal";
+import { getUser, requireProfile } from "@/lib/auth/dal";
+import { Role } from "@/lib/rbac";
 import { authorizeStore } from "@/lib/auth/tenancy";
 import { getStripe, isStripeConfigured } from "@/lib/stripe/server";
 import { isUniqueViolation } from "@/lib/forms";
 import {
   OrderStatus,
+  OrderType,
   PaymentMethod,
   PaymentStatus,
 } from "@/generated/prisma/enums";
 import { CheckoutSchema, ORDER_STATUS_FLOW, defaultRestoreStock, orderHadStockDeducted } from "@/lib/orders/schemas";
+import { computeDeliveryForStore } from "@/lib/delivery/compute";
 import {
   deductStockForOrder,
   reverseStockForOrder,
@@ -243,6 +246,31 @@ export async function placeOrder(
     orderLines.reduce((sum, l) => sum + l.lineTotal, 0),
   );
 
+  let deliveryFee = 0;
+  let deliveryDistanceKm: number | null = null;
+  let deliveryDurationMinutes: number | null = null;
+  let deliveryAddress: string | null = null;
+
+  if (data.type === OrderType.DELIVERY) {
+    if (!data.deliveryAddress) {
+      return {
+        ok: false,
+        message: "Pre donášku zadaj adresu doručenia.",
+        fieldErrors: { deliveryAddress: ["Zadaj adresu doručenia."] },
+      };
+    }
+    const delivery = await computeDeliveryForStore(store.id, data.deliveryAddress);
+    if (!delivery.ok) {
+      return { ok: false, message: delivery.message };
+    }
+    deliveryFee = delivery.fee;
+    deliveryDistanceKm = delivery.distanceKm;
+    deliveryDurationMinutes = delivery.durationMinutes;
+    deliveryAddress = data.deliveryAddress;
+  }
+
+  const total = round2(subtotal + deliveryFee);
+
   const user = await getUser();
   const customerId = user
     ? (
@@ -269,8 +297,12 @@ export async function placeOrder(
             paymentStatus: PaymentStatus.UNPAID,
             paymentMethod: data.paymentMethod,
             subtotal,
-            total: subtotal,
+            deliveryFee,
+            total,
             currency: store.currency,
+            deliveryAddress,
+            deliveryDistanceKm,
+            deliveryDurationMinutes,
             customerName: data.customerName ?? null,
             customerEmail: data.customerEmail ?? null,
             customerPhone: data.customerPhone ?? null,
@@ -324,21 +356,35 @@ export async function placeOrder(
       ui_mode: "embedded_page",
       mode: "payment",
       redirect_on_completion: "never",
-      line_items: orderLines.map((l) => ({
-        quantity: l.quantity,
-        price_data: {
-          currency: store.currency.toLowerCase(),
-          unit_amount: Math.round(l.unitPrice * 100),
-          product_data: {
-            name:
-              l.choices.length > 0
-                ? `${l.nameSnapshot} (${l.choices
-                    .map((c) => c.nameSnapshot)
-                    .join(", ")})`
-                : l.nameSnapshot,
+      line_items: [
+        ...orderLines.map((l) => ({
+          quantity: l.quantity,
+          price_data: {
+            currency: store.currency.toLowerCase(),
+            unit_amount: Math.round(l.unitPrice * 100),
+            product_data: {
+              name:
+                l.choices.length > 0
+                  ? `${l.nameSnapshot} (${l.choices
+                      .map((c) => c.nameSnapshot)
+                      .join(", ")})`
+                  : l.nameSnapshot,
+            },
           },
-        },
-      })),
+        })),
+        ...(deliveryFee > 0
+          ? [
+              {
+                quantity: 1,
+                price_data: {
+                  currency: store.currency.toLowerCase(),
+                  unit_amount: Math.round(deliveryFee * 100),
+                  product_data: { name: "Donáška" },
+                },
+              },
+            ]
+          : []),
+      ],
       metadata: { orderId: created.id, storeId: store.id },
       payment_intent_data: { metadata: { orderId: created.id } },
       ...(data.customerEmail ? { customer_email: data.customerEmail } : {}),

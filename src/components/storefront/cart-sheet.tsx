@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/sheet";
 import { FieldError, FormMessage } from "@/components/admin/form-feedback";
 import { CartSignInBanner } from "@/components/storefront/cart-sign-in-banner";
+import { useStorefront } from "@/components/storefront/storefront-context";
 import { useCart } from "@/components/storefront/cart-context";
 import { StripeCheckout } from "@/components/storefront/stripe-checkout";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,7 @@ import {
 } from "@/lib/orders/schemas";
 import { OrderType, PaymentMethod } from "@/generated/prisma/enums";
 import { formatMoney } from "@/lib/orders/types";
+import { formatDeliveryDuration } from "@/lib/delivery/format";
 
 type View = "cart" | "checkout" | "payment" | "success";
 
@@ -72,6 +74,7 @@ export function CartSheet({
 }) {
   const { lines, totalQuantity, subtotal, setQuantity, remove, clear } =
     useCart();
+  const { delivery } = useStorefront();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<View>("cart");
@@ -82,7 +85,9 @@ export function CartSheet({
     defaultCustomer?.email ?? "",
   );
 
-  const [orderType, setOrderType] = useState<OrderType>(OrderType.TAKEAWAY);
+  const [orderType, setOrderType] = useState<OrderType>(
+    delivery.fee != null ? OrderType.DELIVERY : OrderType.TAKEAWAY,
+  );
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
     onlinePaymentEnabled ? PaymentMethod.ONLINE : PaymentMethod.CASH,
   );
@@ -92,6 +97,12 @@ export function CartSheet({
   const [clientSecret, setClientSecret] = useState<string>();
   const [orderId, setOrderId] = useState<string>();
   const [success, setSuccess] = useState<OrderStatusInfo>();
+
+  useEffect(() => {
+    if (delivery.fee != null) {
+      setOrderType(OrderType.DELIVERY);
+    }
+  }, [delivery.fee]);
 
   function handleSignInSuccess(customer: { name?: string; email: string }) {
     setSignedIn(true);
@@ -116,6 +127,10 @@ export function CartSheet({
     }
   }
 
+  const deliveryFee =
+    orderType === OrderType.DELIVERY && delivery.fee != null ? delivery.fee : 0;
+  const grandTotal = subtotal + deliveryFee;
+
   function handlePlaceOrder(formData: FormData) {
     setError(undefined);
     setFieldErrors(undefined);
@@ -127,6 +142,8 @@ export function CartSheet({
       customerEmail: formData.get("customerEmail"),
       customerPhone: formData.get("customerPhone"),
       note: formData.get("note"),
+      deliveryAddress:
+        orderType === OrderType.DELIVERY ? delivery.address : undefined,
       items: lines.map((l) => ({
         menuItemId: l.menuItemId,
         quantity: l.quantity,
@@ -193,7 +210,7 @@ export function CartSheet({
             </span>
           </span>
           <span className="tabular-nums text-lg" suppressHydrationWarning>
-            {formatMoney(subtotal, currency)}
+            {formatMoney(grandTotal, currency)}
           </span>
         </Button>
       </SheetTrigger>
@@ -203,7 +220,7 @@ export function CartSheet({
         showCloseButton={false}
         className="flex w-full flex-col gap-0 p-0 sm:max-w-full"
       >
-        <SheetHeader className="border-b">
+        <SheetHeader className="border-b-2 border-primary">
           <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               {(view === "checkout" || view === "payment") && (
@@ -228,14 +245,27 @@ export function CartSheet({
           </div>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-2xl p-4">
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="mx-auto w-full max-w-2xl">
             {view === "cart" && (
               <CartView
                 currency={currency}
                 lines={lines}
                 setQuantity={setQuantity}
                 remove={remove}
+                deliveryFee={
+                  orderType === OrderType.DELIVERY && delivery.fee != null
+                    ? delivery.fee
+                    : null
+                }
+                deliveryDistanceKm={
+                  orderType === OrderType.DELIVERY ? delivery.distanceKm : null
+                }
+                deliveryDurationMinutes={
+                  orderType === OrderType.DELIVERY
+                    ? delivery.durationMinutes
+                    : null
+                }
               />
             )}
 
@@ -317,6 +347,21 @@ export function CartSheet({
                       </Select>
                     </div>
 
+                    {orderType === OrderType.DELIVERY && delivery.address && (
+                      <div className="space-y-2">
+                        <Label>Adresa doručenia</Label>
+                        <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                          {delivery.address}
+                        </p>
+                        {delivery.error && (
+                          <p className="text-sm text-destructive">
+                            {delivery.error}
+                          </p>
+                        )}
+                        <FieldError messages={fieldErrors?.deliveryAddress} />
+                      </div>
+                    )}
+
                     <div className="space-y-2">
                       <Label htmlFor="note">Poznámka</Label>
                       <Textarea
@@ -369,15 +414,16 @@ export function CartSheet({
             {view === "success" && success && <SuccessView info={success} />}
           </div>
         </div>
-
+                            
         {(view === "cart" || view === "checkout" || view === "success") && (
-          <div className="border-t bg-background">
-            <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-4 p-4">
+          <div className="border-t-2 border-primary bg-yellow-400">
+            <div className="mx-auto w-full max-w-2xl space-y-2 p-4">
+              <div className="flex items-center justify-between gap-4">
               {view !== "success" ? (
                 <div className="flex items-baseline gap-3">
                   <span className="text-xl font-bold">Spolu</span>
                   <span className="text-2xl font-bold tabular-nums">
-                    {formatMoney(subtotal, currency)}
+                    {formatMoney(grandTotal, currency)}
                   </span>
                 </div>
               ) : (
@@ -388,7 +434,11 @@ export function CartSheet({
                 <Button
                   className="shrink-0 px-8"
                   size="lg"
-                  disabled={lines.length === 0}
+                  disabled={
+                    lines.length === 0 ||
+                    (orderType === OrderType.DELIVERY &&
+                      (delivery.fee == null || !!delivery.error))
+                  }
                   onClick={() => {
                     setError(undefined);
                     setView("checkout");
@@ -404,7 +454,12 @@ export function CartSheet({
                   form="checkout-form"
                   className="shrink-0 px-8"
                   size="lg"
-                  disabled={pending || lines.length === 0}
+                  disabled={
+                    pending ||
+                    lines.length === 0 ||
+                    (orderType === OrderType.DELIVERY &&
+                      (delivery.fee == null || !!delivery.error))
+                  }
                 >
                   {pending
                     ? "Spracúvam…"
@@ -423,6 +478,7 @@ export function CartSheet({
                   Hotovo
                 </Button>
               )}
+              </div>
             </div>
           </div>
         )}
@@ -437,11 +493,17 @@ function CartView({
   lines,
   setQuantity,
   remove,
+  deliveryFee,
+  deliveryDistanceKm,
+  deliveryDurationMinutes,
 }: {
   currency: string;
   lines: ReturnType<typeof useCart>["lines"];
   setQuantity: ReturnType<typeof useCart>["setQuantity"];
   remove: ReturnType<typeof useCart>["remove"];
+  deliveryFee: number | null;
+  deliveryDistanceKm: number | null;
+  deliveryDurationMinutes: number | null;
 }) {
   if (lines.length === 0) {
     return (
@@ -453,10 +515,10 @@ function CartView({
   }
 
   return (
-    <ul className="divide-y">
+    <ul className="">
       {lines.map((line) => (
-        <li key={line.lineId} className="flex gap-4 py-4">
-          <div className="relative size-20 shrink-0 overflow-hidden rounded-lg border bg-muted">
+        <li key={line.lineId} className="flex gap-4 py-4 border-b-2 border-primary">
+          <div className="relative size-20 shrink-0 overflow-hidden border-2 border-primary">
             {line.imageUrl ? (
               <Image
                 src={line.imageUrl}
@@ -477,12 +539,9 @@ function CartView({
               <p className="text-lg font-semibold leading-snug">{line.name}</p>
               {line.choices.length > 0 && (
                 <p className="mt-0.5 text-sm text-muted-foreground">
-                  {line.choices.map((c) => c.name).join(", ")}
+                  {formatMoney(line.price, currency)}, {line.choices.map((c) => c.name).join(", ")}
                 </p>
               )}
-              <p className="mt-1 text-sm text-muted-foreground tabular-nums">
-                {formatMoney(line.price, currency)}
-              </p>
             </div>
 
             <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end sm:gap-4">
@@ -509,7 +568,7 @@ function CartView({
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-lg font-semibold tabular-nums">
+                <span className="text-lg font-semibold tabular-nums min-w-20 text-right">
                   {formatMoney(line.price * line.quantity, currency)}
                 </span>
                 <Button
@@ -526,6 +585,39 @@ function CartView({
           </div>
         </li>
       ))}
+      {deliveryFee != null && (
+        <li className="flex gap-4 py-4">
+          <div className="relative size-20 shrink-0 overflow-hidden border-2 border-primary">
+            <Image
+              src="/courier.webp"
+              alt="Donáška"
+              fill
+              sizes="80px"
+              className="object-cover"
+            />
+          </div>
+
+          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="min-w-0 flex-1">
+              <p className="text-lg font-semibold leading-snug">Donáška</p>
+              {deliveryDistanceKm != null && (
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  {deliveryDistanceKm} km
+                  {deliveryDurationMinutes != null &&
+                    `, ${formatDeliveryDuration(deliveryDurationMinutes)}`}
+                </p>
+              )}
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="text-lg font-semibold tabular-nums">
+                {formatMoney(deliveryFee, currency)}
+              </span>
+              <div className="size-10 shrink-0" aria-hidden />
+            </div>
+          </div>
+        </li>
+      )}
     </ul>
   );
 }

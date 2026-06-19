@@ -14,7 +14,7 @@ export function MenuOrderBanner() {
         <Button
           asChild
           size="lg"
-          className="bg-yellow-400 hover:bg-yellow-500 text-primary"
+          className="bg-red-600 hover:bg-red-700 text-white"
         >
           <Link href="/">Objednať</Link>
         </Button>

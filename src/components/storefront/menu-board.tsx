@@ -21,23 +21,16 @@ import {
 import { showCartAddedToast } from "@/components/storefront/cart-added-toast";
 import { useCart } from "@/components/storefront/cart-context";
 import { ComboChoiceDialog } from "@/components/storefront/combo-choice-dialog";
+import { WelcomePanel } from "@/components/storefront/welcome-panel";
 
 export const WELCOME_CATEGORY_ID = "__welcome__";
 
 const WELCOME_CATEGORY: MenuCategoryDTO = {
   id: WELCOME_CATEGORY_ID,
-  name: "Vitaj",
-  imageUrl: "/custom.webp",
+  name: "Donáška",
+  imageUrl: "/courier.webp",
   items: [],
 };
-
-function WelcomePanel() {
-  return (
-    <div className="overflow-hidden bg-background md:border-r-2 md:border-primary">
-      <img src="/hero.webp" alt="Box66" className="h-auto w-full" />
-    </div>
-  );
-}
 
 const ALLERGEN_LABEL = new Map(ALLERGENS.map((a) => [a.code, a.label]));
 
@@ -145,10 +138,12 @@ export function MenuBoard({
   categories,
   currency,
   showWelcome = false,
+  loading = false,
 }: {
   categories: MenuCategoryDTO[];
   currency: string;
   showWelcome?: boolean;
+  loading?: boolean;
 }) {
   const displayCategories = showWelcome
     ? [WELCOME_CATEGORY, ...categories]
@@ -230,12 +225,14 @@ export function MenuBoard({
             </nav>
           </aside>
 
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex flex-col flex-1">
             {isWelcomeActive ? (
               <WelcomePanel />
             ) : activeCategory ? (
               <section className="space-y-5">
-                {activeCategory.items.length === 0 ? (
+                {loading ? (
+                  <p className="p-6 text-muted-foreground">Načítavam menu…</p>
+                ) : activeCategory.items.length === 0 ? (
                   <p className="text-muted-foreground">
                     V tejto kategórii zatiaľ nie sú žiadne položky.
                   </p>

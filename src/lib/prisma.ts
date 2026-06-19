@@ -55,6 +55,22 @@ type PrismaGlobal = typeof globalThis & {
 
 const globalForPrisma = globalThis as PrismaGlobal;
 
+/** Delegáty pridané v migrácii donášky — slúžia na detekciu zastaralého klienta v dev. */
+const REQUIRED_DELEGATES = ["deliveryZoneDefault", "storeDeliveryZone"] as const;
+
+function clientHasDeliveryDelegates(client: object): boolean {
+  return REQUIRED_DELEGATES.every(
+    (key) => key in client && (client as Record<string, unknown>)[key] != null,
+  );
+}
+
+function disposeCachedPrisma(): void {
+  void globalForPrisma.__box66PgPool?.end().catch(() => {});
+  globalForPrisma.__box66Prisma = undefined;
+  globalForPrisma.__box66PgPool = undefined;
+  globalForPrisma.__box66DatabaseUrl = undefined;
+}
+
 function createPgPool(connectionString: string): Pool {
   const pool = new Pool({
     connectionString,
@@ -103,7 +119,15 @@ function createPrismaClient(): PrismaClient {
     globalForPrisma.__box66Prisma &&
     globalForPrisma.__box66DatabaseUrl === connectionString
   ) {
-    return globalForPrisma.__box66Prisma;
+    // Po `prisma generate` môže dev server držať starú inštanciu bez nových modelov.
+    if (
+      process.env.NODE_ENV !== "production" &&
+      !clientHasDeliveryDelegates(globalForPrisma.__box66Prisma)
+    ) {
+      disposeCachedPrisma();
+    } else {
+      return globalForPrisma.__box66Prisma;
+    }
   }
 
   void globalForPrisma.__box66PgPool?.end().catch(() => {});
@@ -127,4 +151,24 @@ function createPrismaClient(): PrismaClient {
   return client;
 }
 
-export const prisma = createPrismaClient();
+let prismaSingleton = createPrismaClient();
+
+function getPrisma(): PrismaClient {
+  if (
+    process.env.NODE_ENV !== "production" &&
+    !clientHasDeliveryDelegates(prismaSingleton)
+  ) {
+    disposeCachedPrisma();
+    prismaSingleton = createPrismaClient();
+  }
+  return prismaSingleton;
+}
+
+/** Proxy zaisťuje, že po `prisma generate` sa v dev použije nový klient. */
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    const client = getPrisma();
+    const value = Reflect.get(client, prop, receiver);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});

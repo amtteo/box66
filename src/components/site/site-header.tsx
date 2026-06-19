@@ -19,6 +19,7 @@ import {
 
 const NAV = [
   { href: "/menu", label: "Naše menu" },
+  { href: "/dodavatelia", label: "Pre dodávateľov" },
   { href: "/kontakt", label: "Kontakt" },
 ] as const;
 

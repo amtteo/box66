@@ -1,121 +1,150 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { ImageIcon, Pencil } from "lucide-react";
+import { ImageIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import { removeMenuItem } from "@/lib/menu/actions";
 import { DeleteButton } from "@/components/admin/catalog/delete-button";
-import {
-  MenuItemDialog,
-  type MenuItemFormValues,
-} from "@/components/admin/menu/menu-item-dialog";
+import { MenuAvailabilitySwitch } from "@/components/admin/menu/menu-availability-switch";
 
-export type MenuListItem = MenuItemFormValues & {
+export type MenuListItem = {
+  menuItemId: string;
+  productName: string;
+  categoryId: string;
   categoryName: string;
+  categorySortOrder: number;
+  isAvailable: boolean;
   imageUrl: string | null;
   productActive: boolean;
 };
 
-export function MenuTable({
-  storeId,
-  currency,
-  items,
-}: {
-  storeId: string;
-  currency: string;
+type CategoryGroup = {
+  id: string;
+  name: string;
+  sortOrder: number;
   items: MenuListItem[];
+};
+
+function groupByCategory(items: MenuListItem[]): CategoryGroup[] {
+  const map = new Map<string, CategoryGroup>();
+  for (const item of items) {
+    let group = map.get(item.categoryId);
+    if (!group) {
+      group = {
+        id: item.categoryId,
+        name: item.categoryName,
+        sortOrder: item.categorySortOrder,
+        items: [],
+      };
+      map.set(item.categoryId, group);
+    }
+    group.items.push(item);
+  }
+  return [...map.values()].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, "sk"),
+  );
+}
+
+function MenuItemCard({
+  item,
+  isSuperAdmin,
+}: {
+  item: MenuListItem;
+  isSuperAdmin: boolean;
 }) {
+  const [isAvailable, setIsAvailable] = useState(item.isAvailable);
+
+  useEffect(() => {
+    setIsAvailable(item.isAvailable);
+  }, [item.isAvailable]);
+
+  return (
+    <article
+      className={cn(
+        "flex flex-col overflow-hidden rounded-lg border bg-card",
+        !isAvailable && "opacity-60",
+      )}
+    >
+      <div className="relative aspect-square w-full bg-muted/40">
+        {item.imageUrl ? (
+          <Image
+            src={item.imageUrl}
+            alt={item.productName}
+            fill
+            sizes="(max-width: 1024px) 33vw, 20vw"
+            className="object-cover"
+          />
+        ) : (
+          <div className="flex size-full items-center justify-center">
+            <ImageIcon className="size-10 text-muted-foreground/60" />
+          </div>
+        )}
+        {isSuperAdmin && (
+          <div className="absolute top-1.5 right-1.5">
+            <DeleteButton
+              id={item.menuItemId}
+              name={item.productName}
+              action={removeMenuItem}
+              description="Produkt odstránime z menu tejto predajne (z katalógu ostáva)."
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-2 px-2.5 py-2">
+        <div className="min-w-0 text-left">
+          <p className="truncate text-sm font-medium leading-tight">{item.productName}</p>
+          {!item.productActive && (
+            <Badge variant="outline" className="mt-1 text-[10px]">
+              skrytý
+            </Badge>
+          )}
+        </div>
+        <MenuAvailabilitySwitch
+          menuItemId={item.menuItemId}
+          isAvailable={isAvailable}
+          onAvailabilityChange={setIsAvailable}
+          compact
+        />
+      </div>
+    </article>
+  );
+}
+
+export function MenuTable({
+  items,
+  isSuperAdmin,
+}: {
+  items: MenuListItem[];
+  isSuperAdmin: boolean;
+}) {
+  const groups = useMemo(() => groupByCategory(items), [items]);
+
   if (items.length === 0) {
     return (
       <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">
-        Menu je zatiaľ prázdne. Pridaj produkty z katalógu pomocou tlačidla vpravo hore.
+        {isSuperAdmin
+          ? "Menu je zatiaľ prázdne. Priraď produkty z katalógu pomocou tlačidla vpravo hore."
+          : "Centrála ešte nepriradila žiadne produkty do menu tejto predajne."}
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-12"></TableHead>
-            <TableHead>Produkt</TableHead>
-            <TableHead>Kategória</TableHead>
-            <TableHead className="text-right">Cena</TableHead>
-            <TableHead>Dostupnosť</TableHead>
-            <TableHead className="w-20 text-right">Akcie</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.map((item) => (
-            <TableRow key={item.menuItemId}>
-              <TableCell>
-                <div className="flex size-9 items-center justify-center overflow-hidden rounded-md border bg-muted">
-                  {item.imageUrl ? (
-                    <Image
-                      src={item.imageUrl}
-                      alt={item.productName}
-                      width={36}
-                      height={36}
-                      className="size-full object-cover"
-                    />
-                  ) : (
-                    <ImageIcon className="size-4 text-muted-foreground" />
-                  )}
-                </div>
-              </TableCell>
-              <TableCell className="font-medium">
-                {item.productName}
-                {!item.productActive && (
-                  <Badge variant="outline" className="ml-2 text-[10px]">
-                    v katalógu skrytý
-                  </Badge>
-                )}
-              </TableCell>
-              <TableCell className="text-muted-foreground">{item.categoryName}</TableCell>
-              <TableCell className="text-right tabular-nums">
-                {item.price} {currency}
-              </TableCell>
-              <TableCell>
-                <Badge variant={item.isAvailable ? "default" : "secondary"}>
-                  {item.isAvailable ? "Dostupné" : "Nedostupné"}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <div className="flex justify-end gap-1">
-                  <MenuItemDialog
-                    storeId={storeId}
-                    currency={currency}
-                    item={item}
-                    trigger={
-                      <Button variant="ghost" size="icon-sm">
-                        <Pencil className="size-4" />
-                        <span className="sr-only">Upraviť</span>
-                      </Button>
-                    }
-                  />
-                  <DeleteButton
-                    id={item.menuItemId}
-                    name={item.productName}
-                    action={removeMenuItem}
-                    description="Produkt odstránime z menu tejto predajne (z katalógu ostáva)."
-                  />
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+    <div className="space-y-8">
+      {groups.map((group) => (
+        <section key={group.id}>
+          <h2 className="mb-3 text-sm font-semibold tracking-tight">{group.name}</h2>
+          <div className="grid grid-cols-3 gap-3 lg:grid-cols-5 lg:gap-4">
+            {group.items.map((item) => (
+              <MenuItemCard key={item.menuItemId} item={item} isSuperAdmin={isSuperAdmin} />
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

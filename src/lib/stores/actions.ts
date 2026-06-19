@@ -80,7 +80,11 @@ export async function saveStore(
     if (id) {
       await prisma.store.update({ where: { id }, data });
     } else {
-      await prisma.store.create({ data: { ...data, organizationId } });
+      const created = await prisma.store.create({
+        data: { ...data, organizationId },
+      });
+      const { seedStoreDeliveryZones } = await import("@/lib/delivery/actions");
+      await seedStoreDeliveryZones(created.id);
     }
   } catch {
     return {

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
-import { Role } from "@/lib/auth/dal";
+import { Role, requireRole } from "@/lib/auth/dal";
 import { authorizeStore } from "@/lib/auth/tenancy";
 import {
   flattenZodError,
@@ -11,41 +11,55 @@ import {
   rawValues,
   type FormState,
 } from "@/lib/forms";
-import { AddMenuItemSchema, UpdateMenuItemSchema } from "@/lib/menu/schemas";
+import {
+  AddMenuItemSchema,
+  ToggleMenuItemAvailabilitySchema,
+} from "@/lib/menu/schemas";
 
 const PATH = "/admin/menu";
 
-/** Zapne globálny produkt do menu predajne s cenou a dostupnosťou. */
+/** Priradí globálny produkt do menu predajne (iba superadmin). Cena sa berie z katalógu. */
 export async function addMenuItem(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  await requireRole(Role.SUPERADMIN);
+
   const parsed = AddMenuItemSchema.safeParse({
     storeId: formData.get("storeId"),
     productId: formData.get("productId"),
-    price: formData.get("price"),
     isAvailable: formData.get("isAvailable"),
-    sortOrder: formData.get("sortOrder"),
   });
   if (!parsed.success) {
     return { ok: false, errors: flattenZodError(parsed.error), values: rawValues(formData) };
   }
 
-  const { storeId, productId, price, isAvailable, sortOrder } = parsed.data;
+  const { storeId, productId, isAvailable } = parsed.data;
   await authorizeStore(storeId, Role.MANAGER);
 
-  // Produkt musí byť aktívny globálny produkt.
   const product = await prisma.product.findUnique({
     where: { id: productId },
-    select: { isActive: true },
+    select: { isActive: true, suggestedPrice: true, sortOrder: true },
   });
   if (!product || !product.isActive) {
     return { ok: false, errors: { productId: ["Neplatný alebo neaktívny produkt."] } };
   }
+  if (product.suggestedPrice == null) {
+    return {
+      ok: false,
+      errors: { productId: ["Produkt nemá nastavenú cenu v katalógu."] },
+    };
+  }
 
   try {
     await prisma.menuItem.create({
-      data: { storeId, productId, price, isAvailable, sortOrder },
+      data: {
+        storeId,
+        productId,
+        price: product.suggestedPrice,
+        isAvailable,
+        sortOrder: product.sortOrder,
+      },
     });
   } catch (err) {
     if (isUniqueViolation(err)) {
@@ -58,21 +72,20 @@ export async function addMenuItem(
   return { ok: true };
 }
 
-export async function updateMenuItem(
+/** Prepne dostupnosť položky v menu predajne (manažér predajne). */
+export async function toggleMenuItemAvailability(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const parsed = UpdateMenuItemSchema.safeParse({
+  const parsed = ToggleMenuItemAvailabilitySchema.safeParse({
     menuItemId: formData.get("menuItemId"),
-    price: formData.get("price"),
     isAvailable: formData.get("isAvailable"),
-    sortOrder: formData.get("sortOrder"),
   });
   if (!parsed.success) {
-    return { ok: false, errors: flattenZodError(parsed.error), values: rawValues(formData) };
+    return { ok: false, errors: flattenZodError(parsed.error) };
   }
 
-  const { menuItemId, price, isAvailable, sortOrder } = parsed.data;
+  const { menuItemId, isAvailable } = parsed.data;
 
   const item = await prisma.menuItem.findUnique({
     where: { id: menuItemId },
@@ -84,17 +97,20 @@ export async function updateMenuItem(
   try {
     await prisma.menuItem.update({
       where: { id: menuItemId },
-      data: { price, isAvailable, sortOrder },
+      data: { isAvailable },
     });
   } catch {
-    return { ok: false, message: "Položku menu sa nepodarilo uložiť." };
+    return { ok: false, message: "Dostupnosť sa nepodarilo uložiť." };
   }
 
   revalidatePath(PATH);
   return { ok: true };
 }
 
+/** Odstráni produkt z menu predajne (iba superadmin). */
 export async function removeMenuItem(menuItemId: string): Promise<FormState> {
+  await requireRole(Role.SUPERADMIN);
+
   const item = await prisma.menuItem.findUnique({
     where: { id: menuItemId },
     select: { storeId: true },

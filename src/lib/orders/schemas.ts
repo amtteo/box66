@@ -13,8 +13,9 @@ export const CHECKOUT_PAYMENT_METHODS = [
   PaymentMethod.CASH,
 ] as const;
 
-/** Typy objednávky ponúkané zákazníkovi (donáška rieši neskoršie kolo). */
+/** Typy objednávky ponúkané zákazníkovi na úvodnej stránke. */
 export const CHECKOUT_ORDER_TYPES = [
+  OrderType.DELIVERY,
   OrderType.TAKEAWAY,
   OrderType.DINE_IN,
 ] as const;
@@ -97,10 +98,22 @@ export const CheckoutSchema = z.object({
     z.string().trim().max(40).optional(),
   ),
   note: optionalText,
+  deliveryAddress: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.string().trim().min(5).max(500).optional(),
+  ),
   items: z
     .array(CartItemSchema)
     .min(1, { error: "Košík je prázdny." })
     .max(100),
+}).superRefine((data, ctx) => {
+  if (data.type === OrderType.DELIVERY && !data.deliveryAddress) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Pre donášku zadaj adresu doručenia.",
+      path: ["deliveryAddress"],
+    });
+  }
 });
 
 export type CartItemInput = z.infer<typeof CartItemSchema>;

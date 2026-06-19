@@ -1,0 +1,50 @@
+@import "./delivery-field.css";
+
+/* Places API (New) — Google widget vnútri .delivery-field */
+.delivery-address-autocomplete gmp-place-autocomplete {
+  display: block;
+  width: 100%;
+  height: 48px;
+  box-sizing: border-box;
+  color-scheme: light;
+  background-color: transparent;
+  color: var(--foreground, #000);
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 0.875rem;
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+.delivery-address-autocomplete gmp-place-autocomplete:focus,
+.delivery-address-autocomplete gmp-place-autocomplete:focus-within,
+.delivery-address-autocomplete gmp-place-autocomplete:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.delivery-address-autocomplete gmp-place-autocomplete::part(focus-ring) {
+  display: none !important;
+}
+
+.delivery-address-autocomplete gmp-place-autocomplete::part(input) {
+  outline: none !important;
+  box-shadow: none !important;
+  padding-left: 2.5rem !important;
+  padding-right: 0.75rem !important;
+}
+
+.delivery-address-autocomplete--with-icon gmp-place-autocomplete {
+  padding-left: 0;
+}
+
+.delivery-address-autocomplete--has-clear gmp-place-autocomplete::part(input) {
+  padding-right: 2.5rem !important;
+}
+
+.delivery-address-autocomplete__widget {
+  width: 100%;
+  min-height: 100%;
+}

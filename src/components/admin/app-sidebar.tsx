@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Receipt,
   Store,
+  Truck,
   Users,
   Utensils,
   Warehouse,
@@ -48,6 +49,7 @@ const PREVADZKA: NavItem[] = [
   { title: "Objednávky", href: "/admin/objednavky", icon: Receipt, cap: "store" },
   { title: "Menu", href: "/admin/menu", icon: Utensils, cap: "store" },
   { title: "Sklad", href: "/admin/sklad", icon: Warehouse, cap: "store" },
+  { title: "Donáška", href: "/admin/donaska", icon: Truck, cap: "store" },
 ];
 
 const FRANSIZA: NavItem[] = [
@@ -57,6 +59,7 @@ const FRANSIZA: NavItem[] = [
 
 const PLATFORMA: NavItem[] = [
   { title: "Katalóg produktov", href: "/admin/katalog", icon: Boxes, cap: "superAdmin" },
+  { title: "Donáška (šablóna)", href: "/admin/katalog/donaska", icon: Truck, cap: "superAdmin" },
   { title: "Organizácie", href: "/admin/organizacie", icon: Building2, cap: "superAdmin" },
 ];
 

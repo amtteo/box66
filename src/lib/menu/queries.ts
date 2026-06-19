@@ -6,16 +6,20 @@ import { prisma } from "@/lib/prisma";
 export async function getMenuItems(storeId: string) {
   return prisma.menuItem.findMany({
     where: { storeId },
-    orderBy: [{ sortOrder: "asc" }, { product: { name: "asc" } }],
+    orderBy: [
+      { product: { category: { sortOrder: "asc" } } },
+      { product: { category: { name: "asc" } } },
+      { sortOrder: "asc" },
+      { product: { name: "asc" } },
+    ],
     include: {
       product: {
         select: {
           id: true,
           name: true,
           imageUrl: true,
-          suggestedPrice: true,
           isActive: true,
-          category: { select: { name: true } },
+          category: { select: { id: true, name: true, sortOrder: true } },
         },
       },
     },
@@ -32,11 +36,15 @@ export async function getProductsNotInMenu(storeId: string) {
 
   return prisma.product.findMany({
     where: { isActive: true, id: { notIn: excludeIds } },
-    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    orderBy: [
+      { category: { sortOrder: "asc" } },
+      { category: { name: "asc" } },
+      { sortOrder: "asc" },
+      { name: "asc" },
+    ],
     select: {
       id: true,
       name: true,
-      suggestedPrice: true,
       category: { select: { name: true } },
     },
   });

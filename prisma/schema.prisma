@@ -160,12 +160,43 @@ model Store {
   inventoryItems InventoryItem[]
   stockMovements StockMovement[]
   orders         Order[]
-  storeSuppliers StoreSupplier[]
-  supplierPrices SupplierIngredient[]
+  storeSuppliers     StoreSupplier[]
+  supplierPrices     SupplierIngredient[]
+  deliveryZones      StoreDeliveryZone[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
   @@map("stores")
+}
+
+/// Predvolené doručovacie zóny platformy — nové predajne ich zdedia pri vytvorení.
+model DeliveryZoneDefault {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  minKm     Decimal  @db.Decimal(6, 2)
+  maxKm     Decimal  @db.Decimal(6, 2)
+  price     Decimal  @db.Decimal(10, 2)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("delivery_zone_defaults")
+}
+
+/// Doručovacia zóna predajne (vzdialenosť v km → cena donášky).
+model StoreDeliveryZone {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  storeId   String   @db.Uuid
+  minKm     Decimal  @db.Decimal(6, 2)
+  maxKm     Decimal  @db.Decimal(6, 2)
+  price     Decimal  @db.Decimal(10, 2)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@map("store_delivery_zones")
 }
 
 /// Väzba používateľa na organizáciu (a voliteľne konkrétnu predajňu) s rolou.
@@ -468,11 +499,15 @@ model Order {
   paymentStatus PaymentStatus  @default(UNPAID)
   paymentMethod PaymentMethod?
 
-  subtotal      Decimal @default(0) @db.Decimal(10, 2)
-  taxTotal      Decimal @default(0) @db.Decimal(10, 2)
-  discountTotal Decimal @default(0) @db.Decimal(10, 2)
-  total         Decimal @default(0) @db.Decimal(10, 2)
-  currency      String  @default("EUR")
+  subtotal           Decimal  @default(0) @db.Decimal(10, 2)
+  deliveryFee        Decimal  @default(0) @db.Decimal(10, 2)
+  taxTotal           Decimal  @default(0) @db.Decimal(10, 2)
+  discountTotal      Decimal  @default(0) @db.Decimal(10, 2)
+  total              Decimal  @default(0) @db.Decimal(10, 2)
+  currency           String   @default("EUR")
+  deliveryAddress    String?
+  deliveryDistanceKm Decimal? @db.Decimal(6, 2)
+  deliveryDurationMinutes Int?
 
   stripeSessionId       String?
   stripePaymentIntentId String?
