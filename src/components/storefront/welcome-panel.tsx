@@ -147,7 +147,7 @@ function DeliveryQuoteDisplay({
 
   return (
     <div className="flex min-h-[140px] flex-col items-center justify-center px-4 py-8">
-      <div className="grid w-full max-w-xl grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-4">
+      <div className="grid w-full max-w-xl gap-3 grid-cols-3 sm:gap-8">
         <div className="flex flex-col items-center gap-2 text-center">
           <div className="flex size-14 items-center justify-center rounded-full bg-yellow-400">
             <Route className="size-7" />
