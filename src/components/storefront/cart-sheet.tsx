@@ -505,11 +505,11 @@ function CartView({
   deliveryDistanceKm: number | null;
   deliveryDurationMinutes: number | null;
 }) {
-  if (lines.length === 0) {
+  if (lines.length === 0 && deliveryFee == null) {
     return (
-      <div className="flex flex-col items-center gap-3 py-16 text-center text-muted-foreground">
+      <div className="flex flex-col items-center gap-3 py-16 text-center font-bold">
         <ShoppingCart className="size-10" />
-        <p>Košík je prázdny. Pridaj niečo z menu.</p>
+        <p className="text-2xl mt-6">Košík je prázdny</p>
       </div>
     );
   }

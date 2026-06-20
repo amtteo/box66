@@ -191,9 +191,7 @@ function DeliveryQuoteDisplay({
               <Clock className="size-7" />
             </div>
             <span className="text-xl font-bold tabular-nums text-foreground">
-              {delivery.durationMinutes >= 60
-                ? formatDeliveryDuration(delivery.durationMinutes)
-                : `${delivery.durationMinutes} min`}
+              {formatDeliveryDuration(delivery.durationMinutes)}
             </span>
             <span className="text-sm">
               Čas donášky

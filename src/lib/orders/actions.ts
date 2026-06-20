@@ -16,6 +16,7 @@ import {
 } from "@/generated/prisma/enums";
 import { CheckoutSchema, ORDER_STATUS_FLOW, defaultRestoreStock, orderHadStockDeducted } from "@/lib/orders/schemas";
 import { computeDeliveryForStore } from "@/lib/delivery/compute";
+import { estimatedDeliveryMinutes } from "@/lib/delivery/format";
 import {
   deductStockForOrder,
   reverseStockForOrder,
@@ -265,7 +266,7 @@ export async function placeOrder(
     }
     deliveryFee = delivery.fee;
     deliveryDistanceKm = delivery.distanceKm;
-    deliveryDurationMinutes = delivery.durationMinutes;
+    deliveryDurationMinutes = estimatedDeliveryMinutes(delivery.durationMinutes);
     deliveryAddress = data.deliveryAddress;
   }
 
