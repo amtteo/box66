@@ -9,6 +9,7 @@ import {
   Store,
   Motorbike,
   Wallet,
+  DivideIcon,
 } from "lucide-react";
 
 import { DeliveryAddressInput } from "@/components/storefront/delivery-address-input";
@@ -241,7 +242,7 @@ function DeliveryQuoteDisplay({
 
   return (
     <div className="flex min-h-[140px] flex-col items-center justify-center px-4 py-8">
-      <div className="grid w-full max-w-xl gap-3 grid-cols-3 sm:gap-8">
+      <div className="grid w-full gap-3 grid-cols-3 sm:gap-8">
         <div className="flex flex-col items-center gap-2 text-center">
           <div className="flex size-14 items-center justify-center rounded-full bg-yellow-400">
             <Route className="size-7" />
@@ -262,9 +263,14 @@ function DeliveryQuoteDisplay({
             <span className="text-lg font-bold tabular-nums text-foreground">
               {formatDeliveryDuration(delivery.durationMinutes)}
             </span>
+            <div className="flex flex-col">
             <span className="text-sm">
               Čas donášky
             </span>
+            <span className="text-xs">
+              cca.
+            </span>
+            </div>
           </div>
         )}
 

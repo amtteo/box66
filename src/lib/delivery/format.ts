@@ -9,9 +9,9 @@ export function estimatedDeliveryMinutes(routeMinutes: number): number {
 /** Zobrazí odhadovaný čas doručenia v slovenčine (trasa + rezerva). */
 export function formatDeliveryDuration(routeMinutes: number): string {
   const minutes = estimatedDeliveryMinutes(routeMinutes);
-  if (minutes < 60) return `cca ${minutes}min`;
+  if (minutes < 60) return `${minutes}min`;
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  if (mins === 0) return `cca ${hours}h`;
-  return `cca ${hours}h ${mins}min`;
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}min`;
 }
