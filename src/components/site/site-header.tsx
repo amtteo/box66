@@ -183,7 +183,7 @@ export function SiteHeader({ isAuthed }: { isAuthed: boolean }) {
                 <SheetContent side="right" className="w-full max-w-md gap-10 px-12 pb-12 pt-24">
                   <SheetHeader className="p-0">
                     <SheetTitle className="flex items-center">
-                      <Logo iconClassName="h-6" textClassName="h-4" className="gap-1.5" />
+                      <Logo iconClassName="h-10" textClassName="h-8" className="gap-2" />
                     </SheetTitle>
                   </SheetHeader>
                   <nav className="flex flex-col gap-10">
