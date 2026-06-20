@@ -46,7 +46,7 @@ function StorePickerDropdown() {
         <button
           type="button"
           className={cn(
-            "relative flex w-full max-w-[min(100vw-2rem,20rem)] items-center sm:max-w-xs",
+            "relative flex items-center ml-auto ",
             "border-2 border-foreground bg-background text-sm text-foreground shadow-xs",
             "transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
             showStoreAddress ? "min-h-12 py-1.5" : "h-12",
@@ -88,7 +88,7 @@ function StorePickerDropdown() {
           />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[14rem] border-2 border-primary p-4">
+      <DropdownMenuContent align="end" className="max-w-[20rem] border-2 border-primary p-4">
         {!storeReady ? (
           <DropdownMenuLabel className="px-2 py-3 text-center text-sm font-normal leading-snug text-muted-foreground text-center px-6">
             Zadajte adresu doručenia pre výber najbližšej donášky.
@@ -243,9 +243,9 @@ export function WelcomePanel({ isAuthed = false }: { isAuthed?: boolean }) {
       <img
         src="/delivery2.webp"
         alt="Box66"
-        className="mx-auto h-auto w-[300px] pt-12"
+        className="mx-auto h-auto w-[270px] pt-12 mt-24"
       />
-      <h2 className="p-4 py-8 text-center text-4xl font-bold">
+      <h2 className="text-center text-3xl font-bold">
         Zadajte adresu doručenia
       </h2>
 
