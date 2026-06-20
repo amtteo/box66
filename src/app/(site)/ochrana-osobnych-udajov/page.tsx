@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { LegalPageShell } from "@/components/site/legal-page-shell";
+import { LegalPageShell, LEGAL_SECTION_BLOCK } from "@/components/site/legal-page-shell";
 import {
   formatLegalAddress,
   getLegalOperator,
@@ -50,12 +50,11 @@ export default async function PrivacyPage() {
 
   return (
     <LegalPageShell
-      eyebrow="Právne informácie"
       title="Ochrana osobných údajov (GDPR)"
       description="Informácie o spracúvaní osobných údajov podľa Nariadenia Európskeho parlamentu a Rady (EÚ) 2016/679 (GDPR) a zákona č. 18/2018 Z. z. o ochrane osobných údajov."
       updatedAt={UPDATED_AT}
     >
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>1. Prevádzkovateľ</h2>
         <p>
           Prevádzkovateľom osobných údajov spracúvaných prostredníctvom webovej
@@ -73,7 +72,7 @@ export default async function PrivacyPage() {
         )}
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>2. Účel a rozsah tohto dokumentu</h2>
         <p>
           Tento dokument vysvetľuje, aké osobné údaje spracúvame, prečo ich
@@ -83,7 +82,7 @@ export default async function PrivacyPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>3. Kategórie spracúvaných údajov</h2>
         <p>V závislosti od spôsobu využívania služby môžeme spracúvať:</p>
         <ul>
@@ -116,7 +115,7 @@ export default async function PrivacyPage() {
         </ul>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>4. Účely a právne základy spracúvania</h2>
         <div className="space-y-4">
           <div>
@@ -156,7 +155,7 @@ export default async function PrivacyPage() {
         </div>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>5. Doba uchovávania údajov</h2>
         <ul>
           <li>
@@ -182,7 +181,7 @@ export default async function PrivacyPage() {
         </ul>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>6. Príjemcovia a sprostredkovatelia</h2>
         <p>
           Osobné údaje sprístupňujeme len v rozsahu nevyhnutnom na poskytovanie
@@ -219,7 +218,7 @@ export default async function PrivacyPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>7. Cookies a podobné technológie</h2>
         <p>
           Web používa cookies a podobné technológie na zabezpečenie funkčnosti
@@ -244,7 +243,7 @@ export default async function PrivacyPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>8. Bezpečnosť údajov</h2>
         <p>
           Prevádzkovateľ prijal primerané technické a organizačné opatrenia na
@@ -255,7 +254,7 @@ export default async function PrivacyPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>9. Automatizované rozhodovanie a profilovanie</h2>
         <p>
           Pri bežnom objednávaní nevykonávame automatizované rozhodovanie s
@@ -265,7 +264,7 @@ export default async function PrivacyPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>10. Vaše práva</h2>
         <p>Podľa GDPR a zákona č. 18/2018 Z. z. máte najmä tieto práva:</p>
         <ul>
@@ -297,7 +296,7 @@ export default async function PrivacyPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>11. Dozorný orgán</h2>
         <p>
           Dozorným orgánom na území Slovenskej republiky je Úrad na ochranu
@@ -320,7 +319,7 @@ export default async function PrivacyPage() {
         </ul>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>12. Deti</h2>
         <p>
           Služby nie sú primárne určené deťom mladším ako 16 rokov. Vedome
@@ -330,7 +329,7 @@ export default async function PrivacyPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>13. Zmeny zásad</h2>
         <p>
           Tieto zásady môžeme aktualizovať pri zmene právnych predpisov,

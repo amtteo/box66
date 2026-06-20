@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { LegalPageShell } from "@/components/site/legal-page-shell";
+import { LegalPageShell, LEGAL_SECTION_BLOCK } from "@/components/site/legal-page-shell";
 import {
   formatLegalAddress,
   getLegalOperator,
@@ -59,12 +59,11 @@ export default async function TermsPage() {
 
   return (
     <LegalPageShell
-      eyebrow="Právne informácie"
       title="Všeobecné obchodné podmienky"
       description="Podmienky online objednávok hotových jedál a nápojov v prevádzke Box66. Platné pre zmluvy uzavreté na diaľku podľa zákona č. 108/2024 Z. z. o ochrane spotrebiteľa."
       updatedAt={UPDATED_AT}
     >
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>1. Úvodné ustanovenia</h2>
         <p>
           Tieto všeobecné obchodné podmienky (ďalej len „VOP“) upravujú práva a
@@ -79,7 +78,7 @@ export default async function TermsPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>2. Identifikačné údaje obchodníka</h2>
         <p>
           Obchodníkom v zmysle zákona č. 108/2024 Z. z. o ochrane spotrebiteľa
@@ -97,7 +96,7 @@ export default async function TermsPage() {
         )}
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>3. Definície</h2>
         <ul>
           <li>
@@ -119,7 +118,7 @@ export default async function TermsPage() {
         </ul>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>4. Informácie o produktoch</h2>
         <p>
           Pred odoslaním objednávky obchodník zverejní v online rozhraní
@@ -134,7 +133,7 @@ export default async function TermsPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>5. Objednávkový proces</h2>
         <ol>
           <li>
@@ -165,7 +164,7 @@ export default async function TermsPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>6. Ceny a platobné podmienky</h2>
         <p>
           Celková cena objednávky zahŕňa cenu produktov, prípadný poplatok za
@@ -186,7 +185,7 @@ export default async function TermsPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>7. Dodanie, vyzdvihnutie a lehoty plnenia</h2>
         <p>
           Spotrebiteľ si zvolí spôsob plnenia — donášku na adresu alebo
@@ -202,7 +201,7 @@ export default async function TermsPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>8. Právo spotrebiteľa odstúpiť od zmluvy</h2>
         <p>
           V súlade s § 19 zákona č. 108/2024 Z. z. a smernicou Európskeho
@@ -219,7 +218,7 @@ export default async function TermsPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>9. Reklamácie a zodpovednosť za vady</h2>
         <p>
           Spotrebiteľ má právo uplatniť zodpovednosť za vady produktu v súlade
@@ -260,7 +259,7 @@ export default async function TermsPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>10. Alergény a informácie o potravinách</h2>
         <p>
           Informácie o alergénoch a zložení produktov sú uvedené pri jednotlivých
@@ -275,7 +274,7 @@ export default async function TermsPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>11. Ochrana osobných údajov</h2>
         <p>
           Spracúvanie osobných údajov pri objednávaní sa riadi{" "}
@@ -290,7 +289,7 @@ export default async function TermsPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>12. Mimosúdne riešenie sporov</h2>
         <p>
           Spotrebiteľ má právo obrátiť sa na obchodníka so žiadostí o nápravu.
@@ -322,7 +321,7 @@ export default async function TermsPage() {
         </p>
       </section>
 
-      <section>
+      <section className={LEGAL_SECTION_BLOCK}>
         <h2>13. Záverečné ustanovenia</h2>
         <p>
           Tieto VOP sa riadia právnym poriadkom Slovenskej republiky. Ak je
