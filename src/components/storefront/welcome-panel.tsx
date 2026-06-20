@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { DeliveryAddressInput } from "@/components/storefront/delivery-address-input";
+import { DeliveryAddressHistoryDropdown } from "@/components/storefront/delivery-address-history-dropdown";
 import { useStorefront } from "@/components/storefront/storefront-context";
 import {
   DropdownMenu,
@@ -20,11 +21,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { getStoreStreetLine } from "@/lib/delivery/address";
 import { formatMoney } from "@/lib/orders/types";
 import { formatDeliveryDuration } from "@/lib/delivery/format";
 import { cn } from "@/lib/utils";
-
-import "./delivery-field.css";
 
 function StorePickerDropdown() {
   const { stores, nearbyStores, storeId, setStoreId, delivery } =
@@ -35,10 +35,8 @@ function StorePickerDropdown() {
   const currentStore =
     storeOptions.find((s) => s.id === storeId) ??
     stores.find((s) => s.id === storeId);
-
-  const triggerLabel = storeReady
-    ? (currentStore?.name ?? "Predajňa")
-    : "Zadajte lokalitu";
+  const storeStreetLine = currentStore ? getStoreStreetLine(currentStore) : "";
+  const showStoreAddress = storeReady && storeStreetLine.length > 0;
 
   const otherStores = storeOptions.filter((s) => s.id !== storeId);
 
@@ -48,19 +46,46 @@ function StorePickerDropdown() {
         <button
           type="button"
           className={cn(
-            "delivery-field delivery-field--picker w-full max-w-[min(100vw-2rem,20rem)] sm:max-w-xs",
+            "relative flex w-full max-w-[min(100vw-2rem,20rem)] items-center sm:max-w-xs",
+            "border-2 border-foreground bg-background text-sm text-foreground shadow-xs",
+            "transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+            showStoreAddress ? "min-h-12 py-1.5" : "h-12",
           )}
         >
-          <Store className="delivery-field__icon" aria-hidden />
+          <span
+            className="pointer-events-none absolute left-3 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center"
+            aria-hidden
+          >
+            <span className="relative z-[11] -mb-1.5 border-2 border-foreground bg-background p-[0.5px] text-[9px] font-bold leading-none text-foreground">
+              66
+            </span>
+            <Store className="size-[1.40rem] text-foreground" />
+          </span>
           <span
             className={cn(
-              "delivery-field__label",
-              !storeReady && "delivery-field__label--placeholder",
+              "min-w-0 flex-1 overflow-hidden px-10 text-left ml-3",
+              showStoreAddress
+                ? "flex flex-col justify-center gap-0.5"
+                : "text-muted-foreground",
             )}
           >
-            {triggerLabel}
+            {showStoreAddress ? (
+              <>
+                <span className="text-[0.65rem] leading-none text-muted-foreground">
+                  Adresa predajcu
+                </span>
+                <span className="truncate text-sm font-medium leading-tight">
+                  {storeStreetLine}
+                </span>
+              </>
+            ) : (
+              "Zadajte lokalitu"
+            )}
           </span>
-          <ChevronDown className="delivery-field__trailing size-4 opacity-70" />
+          <ChevronDown
+            className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-foreground"
+            aria-hidden
+          />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[14rem] border-2 border-primary p-4">
@@ -86,7 +111,7 @@ function StorePickerDropdown() {
                   className="cursor-pointer py-2.5 text-sm font-medium"
                 >
                   <span className="truncate">
-                    {store.name}
+                    {getStoreStreetLine(store)}
                     {store.city ? ` · ${store.city}` : ""}
                   </span>
                 </DropdownMenuRadioItem>
@@ -192,13 +217,14 @@ function DeliveryQuoteDisplay({
   );
 }
 
-export function WelcomePanel() {
+export function WelcomePanel({ isAuthed = false }: { isAuthed?: boolean }) {
   const {
     currency,
     delivery,
     setDeliveryAddress,
     resetDelivery,
     onDeliveryPlaceSelected,
+    pickDeliveryAddress,
     menuLoading,
   } = useStorefront();
 
@@ -215,7 +241,7 @@ export function WelcomePanel() {
       </div>
 
       <img
-        src="/delivery3.webp"
+        src="/delivery2.webp"
         alt="Box66"
         className="mx-auto h-auto w-[300px] pt-12"
       />
@@ -225,15 +251,23 @@ export function WelcomePanel() {
 
       <div className="space-y-3 p-4 sm:p-6">
         <div className="mx-auto flex max-w-md flex-col">
-          <DeliveryAddressInput
-            className="bg-white"
-            value={delivery.address}
-            onChange={setDeliveryAddress}
-            onClear={resetDelivery}
-            onPlaceSelect={onDeliveryPlaceSelected}
-            disabled={menuLoading}
-            showClear={canResetDelivery}
-          />
+          <div className="flex w-full items-stretch">
+            <DeliveryAddressInput
+              className="bg-white"
+              value={delivery.address}
+              onChange={setDeliveryAddress}
+              onClear={resetDelivery}
+              onPlaceSelect={onDeliveryPlaceSelected}
+              disabled={menuLoading}
+              showClear={canResetDelivery}
+              attachedPicker
+            />
+            <DeliveryAddressHistoryDropdown
+              isAuthed={isAuthed}
+              onPick={pickDeliveryAddress}
+              disabled={menuLoading}
+            />
+          </div>
 
           <div className="mt-8">
             <DeliveryQuoteDisplay currency={currency} delivery={delivery} />

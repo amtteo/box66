@@ -14,7 +14,7 @@ export function SiteFooter() {
           <p className="text-md font-bold">
             Your favourite box
           </p>
-          <img src="/mascot.png" alt="Box66" className="w-50 h-auto" />
+          <img src="/mascot.png" alt="Box66" className="w-30 h-auto" />
         </div>
 
         <div className="space-y-3">

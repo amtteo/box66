@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
+import { OrderStatus, OrderType } from "@/generated/prisma/enums";
 import { sortDeliveryZones } from "@/lib/delivery/zones";
 
 export type PublicStoreOption = {
@@ -8,7 +9,10 @@ export type PublicStoreOption = {
   name: string;
   slug: string;
   currency: string;
+  street: string | null;
   city: string | null;
+  postalCode: string | null;
+  country: string | null;
   latitude: number | null;
   longitude: number | null;
 };
@@ -23,7 +27,10 @@ export async function getPublicStores(): Promise<PublicStoreOption[]> {
       name: true,
       slug: true,
       currency: true,
+      street: true,
       city: true,
+      postalCode: true,
+      country: true,
       latitude: true,
       longitude: true,
     },
@@ -33,7 +40,10 @@ export async function getPublicStores(): Promise<PublicStoreOption[]> {
       name: s.name,
       slug: s.slug,
       currency: s.currency,
+      street: s.street,
       city: s.city,
+      postalCode: s.postalCode,
+      country: s.country,
       latitude: s.latitude != null ? Number(s.latitude) : null,
       longitude: s.longitude != null ? Number(s.longitude) : null,
     })),
@@ -94,3 +104,36 @@ export async function getDeliveryZoneDefaults() {
 export type DeliveryZoneListItem = Awaited<
   ReturnType<typeof getStoreDeliveryZones>
 >[number];
+
+/** Posledné unikátne adresy doručenia z dokončených objednávok zákazníka. */
+export async function getCustomerCompletedDeliveryAddresses(
+  customerId: string,
+  limit = 3,
+): Promise<string[]> {
+  const orders = await prisma.order.findMany({
+    where: {
+      customerId,
+      type: OrderType.DELIVERY,
+      status: OrderStatus.COMPLETED,
+      deliveryAddress: { not: null },
+    },
+    orderBy: { completedAt: "desc" },
+    select: { deliveryAddress: true },
+    take: 20,
+  });
+
+  const seen = new Set<string>();
+  const addresses: string[] = [];
+
+  for (const order of orders) {
+    const addr = order.deliveryAddress?.trim();
+    if (!addr) continue;
+    const key = addr.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    addresses.push(addr);
+    if (addresses.length >= limit) break;
+  }
+
+  return addresses;
+}

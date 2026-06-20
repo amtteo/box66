@@ -11,8 +11,10 @@ import {
   useTransition,
 } from "react";
 
-import { calculateDeliveryFee } from "@/lib/delivery/actions";
+import { calculateDeliveryFee, resolveDeliveryAddressCoords } from "@/lib/delivery/actions";
 import { rankStoresByProximity, type RankedStore } from "@/lib/delivery/rank-stores";
+import { pushDeliverySearchHistory } from "@/lib/delivery/search-history";
+import { showDeliveryAddedToast } from "@/components/storefront/cart-added-toast";
 import { fetchStoreMenu } from "@/lib/orders/storefront-actions";
 import type { MenuCategoryDTO } from "@/lib/orders/types";
 import type { PublicStoreOption } from "@/lib/delivery/queries";
@@ -59,6 +61,11 @@ type StorefrontContextValue = {
     lat: number;
     lng: number;
   }) => void;
+  /** Vyberie adresu z histórie a spustí výpočet donášky. */
+  pickDeliveryAddress: (
+    address: string,
+    coords?: { lat: number; lng: number },
+  ) => Promise<void>;
   refreshDeliveryFee: () => void;
 };
 
@@ -164,7 +171,13 @@ export function StorefrontProvider({
   );
 
   const runFeeCalculation = useCallback(
-    (address: string, activeStoreId: string) => {
+    (
+      address: string,
+      activeStoreId: string,
+      options?: { notify?: boolean },
+    ) => {
+      const notify = options?.notify ?? true;
+
       if (!address.trim()) {
         clearFeeCache();
         setDelivery({
@@ -212,6 +225,13 @@ export function StorefrontProvider({
           feeCacheRef.current.set(activeStoreId, quote);
           applyFeeQuote(address, quote, true);
           writeStorage(ADDRESS_CONFIRMED_KEY, "1");
+          if (notify) {
+            showDeliveryAddedToast(
+              quote.fee,
+              quote.currency,
+              quote.durationMinutes,
+            );
+          }
         } else {
           setDelivery({
             address,
@@ -267,7 +287,7 @@ export function StorefrontProvider({
       }));
       if (wasConfirmed) {
         feeAddressRef.current = savedAddress;
-        runFeeCalculation(savedAddress, activeStoreId);
+        runFeeCalculation(savedAddress, activeStoreId, { notify: false });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- jednorazová hydratácia
@@ -332,7 +352,7 @@ export function StorefrontProvider({
     [clearFeeCache, resetDelivery],
   );
 
-  const onDeliveryPlaceSelected = useCallback(
+  const applyDeliverySelection = useCallback(
     (place: { address: string; lat: number; lng: number }) => {
       setDeliveryAddressState(place.address);
       writeStorage(ADDRESS_KEY, place.address);
@@ -350,6 +370,46 @@ export function StorefrontProvider({
       runFeeCalculation(place.address, bestStoreId);
     },
     [stores, storeId, switchStore, clearFeeCache, runFeeCalculation],
+  );
+
+  const onDeliveryPlaceSelected = useCallback(
+    (place: { address: string; lat: number; lng: number }) => {
+      pushDeliverySearchHistory(place);
+      applyDeliverySelection(place);
+    },
+    [applyDeliverySelection],
+  );
+
+  const pickDeliveryAddress = useCallback(
+    async (
+      address: string,
+      coords?: { lat: number; lng: number },
+    ) => {
+      const trimmed = address.trim();
+      if (!trimmed) return;
+
+      let lat = coords?.lat;
+      let lng = coords?.lng;
+
+      if (lat == null || lng == null) {
+        const geo = await resolveDeliveryAddressCoords(trimmed);
+        if (!geo.ok) {
+          setDeliveryAddressState(trimmed);
+          writeStorage(ADDRESS_KEY, trimmed);
+          removeStorage(DELIVERY_LAT_KEY);
+          removeStorage(DELIVERY_LNG_KEY);
+          setNearbyStores([]);
+          clearFeeCache();
+          runFeeCalculation(trimmed, storeId);
+          return;
+        }
+        lat = geo.lat;
+        lng = geo.lng;
+      }
+
+      applyDeliverySelection({ address: trimmed, lat, lng });
+    },
+    [storeId, applyDeliverySelection, clearFeeCache, runFeeCalculation],
   );
 
   const refreshDeliveryFee = useCallback(() => {
@@ -377,6 +437,7 @@ export function StorefrontProvider({
       setDeliveryAddress,
       resetDelivery,
       onDeliveryPlaceSelected,
+      pickDeliveryAddress,
       refreshDeliveryFee,
     }),
     [
@@ -393,6 +454,7 @@ export function StorefrontProvider({
       setDeliveryAddress,
       resetDelivery,
       onDeliveryPlaceSelected,
+      pickDeliveryAddress,
       refreshDeliveryFee,
     ],
   );

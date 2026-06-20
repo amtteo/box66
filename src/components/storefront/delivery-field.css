@@ -1,4 +1,4 @@
-/* Zdieľaný vzhľad pre pole adresy a výber predajne */
+/* Google Places autocomplete — wrapper okolo widgetu */
 .delivery-field {
   position: relative;
   display: block;
@@ -12,8 +12,7 @@
   transition: border-color 0.15s ease;
 }
 
-.delivery-field:focus-within,
-.delivery-field--picker:focus-visible {
+.delivery-field:focus-within {
   outline: none;
   border-color: var(--foreground, #000);
 }
@@ -43,36 +42,12 @@
   pointer-events: auto;
   cursor: pointer;
   z-index: 20;
-}
-
-.delivery-field--picker {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  padding: 0;
-  font-family: var(--font-sans, system-ui, sans-serif);
-  font-size: 0.875rem;
-  line-height: 1.25rem;
   color: var(--foreground, #000);
 }
 
-.delivery-field--picker:hover {
-  background-color: var(--background, #fff);
-}
-
-.delivery-field__label {
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding-left: 2.5rem;
-  padding-right: 2.5rem;
-  text-align: left;
-}
-
-.delivery-field__label--placeholder {
-  color: var(--muted-foreground, #737373);
+.delivery-field__trailing--action:hover {
+  color: var(--foreground, #000);
+  background-color: color-mix(in oklch, var(--foreground, #000) 8%, transparent);
 }
 
 .delivery-field--disabled {

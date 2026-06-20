@@ -28,7 +28,7 @@ export const WELCOME_CATEGORY_ID = "__welcome__";
 const WELCOME_CATEGORY: MenuCategoryDTO = {
   id: WELCOME_CATEGORY_ID,
   name: "Donáška",
-  imageUrl: "/courier.webp",
+  imageUrl: "/couriermoto.webp",
   items: [],
 };
 
@@ -139,11 +139,13 @@ export function MenuBoard({
   currency,
   showWelcome = false,
   loading = false,
+  isAuthed = false,
 }: {
   categories: MenuCategoryDTO[];
   currency: string;
   showWelcome?: boolean;
   loading?: boolean;
+  isAuthed?: boolean;
 }) {
   const displayCategories = showWelcome
     ? [WELCOME_CATEGORY, ...categories]
@@ -227,7 +229,7 @@ export function MenuBoard({
 
           <div className="min-w-0 flex flex-col flex-1">
             {isWelcomeActive ? (
-              <WelcomePanel />
+              <WelcomePanel isAuthed={isAuthed} />
             ) : activeCategory ? (
               <section className="space-y-5">
                 {loading ? (

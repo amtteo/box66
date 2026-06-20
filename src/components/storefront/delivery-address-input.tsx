@@ -41,6 +41,8 @@ type Props = {
   className?: string;
   /** Zobrazí krížik aj keď je len vypočítaná donáška bez textu v poli. */
   showClear?: boolean;
+  /** Input je vľavo v riadku s históriou — bez pravého borderu. */
+  attachedPicker?: boolean;
 };
 
 export function DeliveryAddressInput({
@@ -51,6 +53,7 @@ export function DeliveryAddressInput({
   disabled,
   className,
   showClear: showClearProp,
+  attachedPicker,
 }: Props) {
   const widgetHostRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<google.maps.places.PlaceAutocompleteElement | null>(
@@ -142,10 +145,17 @@ export function DeliveryAddressInput({
     (showClearProp ?? value.trim().length > 0);
 
   return (
-    <div className={cn("relative w-full", className)}>
+    <div
+      className={cn(
+        "relative w-full",
+        attachedPicker && "min-w-0 flex-1",
+        className,
+      )}
+    >
       <div
         className={cn(
           "delivery-field delivery-address-autocomplete delivery-address-autocomplete--with-icon",
+          attachedPicker && "border-r-0",
           showClear && "delivery-address-autocomplete--has-clear",
           disabled && "delivery-field--disabled",
         )}
@@ -157,9 +167,9 @@ export function DeliveryAddressInput({
             type="button"
             onClick={handleClear}
             aria-label="Vymazať adresu a donášku"
-            className="delivery-field__trailing delivery-field__trailing--action flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="delivery-field__trailing delivery-field__trailing--action flex size-8 items-center justify-center rounded-full transition-colors"
           >
-            <X className="size-4" />
+            <X className="size-4 text-foreground" />
           </button>
         )}
       </div>

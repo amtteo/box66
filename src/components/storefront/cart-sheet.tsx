@@ -589,7 +589,7 @@ function CartView({
         <li className="flex gap-4 py-4">
           <div className="relative size-20 shrink-0 overflow-hidden border-2 border-primary">
             <Image
-              src="/courier.webp"
+              src="/couriermoto.webp"
               alt="Donáška"
               fill
               sizes="80px"

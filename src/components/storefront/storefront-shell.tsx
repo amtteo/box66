@@ -21,8 +21,9 @@ export function StorefrontShell({
       <MenuBoard
         categories={categories}
         currency={currency}
-        showWelcome={!isAuthed}
+        showWelcome
         loading={menuLoading}
+        isAuthed={isAuthed}
       />
       <CartSheet
         storeId={storeId}

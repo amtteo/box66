@@ -3,10 +3,12 @@
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
-import { requireProfile } from "@/lib/auth/dal";
+import { getProfile, requireProfile } from "@/lib/auth/dal";
 import { Role } from "@/lib/rbac";
 import { authorizeStore } from "@/lib/auth/tenancy";
 import { computeDeliveryForStore } from "@/lib/delivery/compute";
+import { geocodeDeliveryAddress } from "@/lib/delivery/geocode";
+import { getCustomerCompletedDeliveryAddresses } from "@/lib/delivery/queries";
 import {
   CalculateDeliverySchema,
   DeliveryZonesFormSchema,
@@ -38,6 +40,29 @@ export async function calculateDeliveryFee(
 
   const { storeId, deliveryAddress } = parsed.data;
   return computeDeliveryForStore(storeId, deliveryAddress);
+}
+
+export type DeliveryAddressHistoryResult =
+  | { ok: true; orderAddresses: string[] }
+  | { ok: false; message: string };
+
+/** Adresy z dokončených donášok prihláseného zákazníka (max 3). */
+export async function fetchDeliveryAddressHistory(): Promise<DeliveryAddressHistoryResult> {
+  const profile = await getProfile();
+  if (!profile) {
+    return { ok: false, message: "Nie si prihlásený." };
+  }
+
+  const orderAddresses = await getCustomerCompletedDeliveryAddresses(
+    profile.id,
+    3,
+  );
+  return { ok: true, orderAddresses };
+}
+
+/** Geokóduje adresu pre výber predajne (haversine). */
+export async function resolveDeliveryAddressCoords(address: string) {
+  return geocodeDeliveryAddress(address);
 }
 
 const STORE_DELIVERY_PATH = "/admin/donaska";
