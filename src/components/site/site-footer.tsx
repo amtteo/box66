@@ -5,7 +5,7 @@ import { Logo } from "@/components/brand/logo";
 export function SiteFooter() {
   return (
     <footer className="mt-auto bg-foreground text-background">
-      <div className="bg-muted/10">
+      <div className="">
       <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-24 sm:px-6 md:grid-cols-3">
         <div className="space-y-3 flex flex-col items-start">
           <Link href="/" className="inline-flex text-background">

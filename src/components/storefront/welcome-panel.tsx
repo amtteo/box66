@@ -72,7 +72,7 @@ function StorePickerDropdown() {
             {showStoreAddress ? (
               <>
                 <span className="text-[0.65rem] leading-none text-muted-foreground">
-                  Adresa predajcu
+                  Adresa predajne
                 </span>
                 <span className="truncate text-sm font-medium leading-tight">
                   {storeStreetLine}
