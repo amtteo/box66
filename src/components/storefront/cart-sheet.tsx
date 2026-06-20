@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -22,13 +22,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Sheet,
   SheetCloseButton,
   SheetContent,
@@ -48,9 +41,7 @@ import {
   type OrderStatusInfo,
 } from "@/lib/orders/actions";
 import {
-  CHECKOUT_ORDER_TYPES,
   ORDER_STATUS_LABEL,
-  ORDER_TYPE_LABEL,
   PAYMENT_STATUS_LABEL,
 } from "@/lib/orders/schemas";
 import { OrderType, PaymentMethod } from "@/generated/prisma/enums";
@@ -74,7 +65,7 @@ export function CartSheet({
 }) {
   const { lines, totalQuantity, subtotal, setQuantity, remove, clear } =
     useCart();
-  const { delivery } = useStorefront();
+  const { delivery, fulfillmentMode } = useStorefront();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<View>("cart");
@@ -85,9 +76,8 @@ export function CartSheet({
     defaultCustomer?.email ?? "",
   );
 
-  const [orderType, setOrderType] = useState<OrderType>(
-    delivery.fee != null ? OrderType.DELIVERY : OrderType.TAKEAWAY,
-  );
+  const orderType =
+    fulfillmentMode === "delivery" ? OrderType.DELIVERY : OrderType.TAKEAWAY;
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
     onlinePaymentEnabled ? PaymentMethod.ONLINE : PaymentMethod.CASH,
   );
@@ -97,12 +87,6 @@ export function CartSheet({
   const [clientSecret, setClientSecret] = useState<string>();
   const [orderId, setOrderId] = useState<string>();
   const [success, setSuccess] = useState<OrderStatusInfo>();
-
-  useEffect(() => {
-    if (delivery.fee != null) {
-      setOrderType(OrderType.DELIVERY);
-    }
-  }, [delivery.fee]);
 
   function handleSignInSuccess(customer: { name?: string; email: string }) {
     setSignedIn(true);
@@ -128,8 +112,12 @@ export function CartSheet({
   }
 
   const deliveryFee =
-    orderType === OrderType.DELIVERY && delivery.fee != null ? delivery.fee : 0;
+    fulfillmentMode === "delivery" && delivery.fee != null ? delivery.fee : 0;
   const grandTotal = subtotal + deliveryFee;
+  const checkoutBlocked =
+    fulfillmentMode === "delivery"
+      ? delivery.fee == null || !!delivery.error
+      : !delivery.quoteAttempted;
 
   function handlePlaceOrder(formData: FormData) {
     setError(undefined);
@@ -254,17 +242,23 @@ export function CartSheet({
                 setQuantity={setQuantity}
                 remove={remove}
                 deliveryFee={
-                  orderType === OrderType.DELIVERY && delivery.fee != null
+                  fulfillmentMode === "delivery" && delivery.fee != null
                     ? delivery.fee
                     : null
                 }
                 deliveryDistanceKm={
-                  orderType === OrderType.DELIVERY ? delivery.distanceKm : null
+                  fulfillmentMode === "delivery" ? delivery.distanceKm : null
                 }
                 deliveryDurationMinutes={
-                  orderType === OrderType.DELIVERY
+                  fulfillmentMode === "delivery"
                     ? delivery.durationMinutes
                     : null
+                }
+                deliveryAddress={
+                  fulfillmentMode === "delivery" ? delivery.address : null
+                }
+                deliveryError={
+                  fulfillmentMode === "delivery" ? delivery.error : null
                 }
               />
             )}
@@ -328,38 +322,8 @@ export function CartSheet({
                       <FieldError messages={fieldErrors?.customerPhone} />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="orderType">Spôsob odberu</Label>
-                      <Select
-                        value={orderType}
-                        onValueChange={(v) => setOrderType(v as OrderType)}
-                      >
-                        <SelectTrigger id="orderType" className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {CHECKOUT_ORDER_TYPES.map((t) => (
-                            <SelectItem key={t} value={t}>
-                              {ORDER_TYPE_LABEL[t]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {orderType === OrderType.DELIVERY && delivery.address && (
-                      <div className="space-y-2">
-                        <Label>Adresa doručenia</Label>
-                        <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
-                          {delivery.address}
-                        </p>
-                        {delivery.error && (
-                          <p className="text-sm text-destructive">
-                            {delivery.error}
-                          </p>
-                        )}
-                        <FieldError messages={fieldErrors?.deliveryAddress} />
-                      </div>
+                    {fulfillmentMode === "delivery" && (
+                      <FieldError messages={fieldErrors?.deliveryAddress} />
                     )}
 
                     <div className="space-y-2">
@@ -434,11 +398,7 @@ export function CartSheet({
                 <Button
                   className="shrink-0 px-8"
                   size="lg"
-                  disabled={
-                    lines.length === 0 ||
-                    (orderType === OrderType.DELIVERY &&
-                      (delivery.fee == null || !!delivery.error))
-                  }
+                  disabled={lines.length === 0 || checkoutBlocked}
                   onClick={() => {
                     setError(undefined);
                     setView("checkout");
@@ -454,12 +414,7 @@ export function CartSheet({
                   form="checkout-form"
                   className="shrink-0 px-8"
                   size="lg"
-                  disabled={
-                    pending ||
-                    lines.length === 0 ||
-                    (orderType === OrderType.DELIVERY &&
-                      (delivery.fee == null || !!delivery.error))
-                  }
+                  disabled={pending || lines.length === 0 || checkoutBlocked}
                 >
                   {pending
                     ? "Spracúvam…"
@@ -494,16 +449,20 @@ function CartView({
   setQuantity,
   remove,
   deliveryFee,
+  deliveryAddress,
   deliveryDistanceKm,
   deliveryDurationMinutes,
+  deliveryError,
 }: {
   currency: string;
   lines: ReturnType<typeof useCart>["lines"];
   setQuantity: ReturnType<typeof useCart>["setQuantity"];
   remove: ReturnType<typeof useCart>["remove"];
   deliveryFee: number | null;
+  deliveryAddress: string | null;
   deliveryDistanceKm: number | null;
   deliveryDurationMinutes: number | null;
+  deliveryError: string | null;
 }) {
   if (lines.length === 0 && deliveryFee == null) {
     return (
@@ -600,12 +559,18 @@ function CartView({
           <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
             <div className="min-w-0 flex-1">
               <p className="text-lg font-semibold leading-snug">Donáška</p>
+              {deliveryAddress && (
+                <p className="mt-0.5 text-sm leading-snug">{deliveryAddress}</p>
+              )}
               {deliveryDistanceKm != null && (
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   {deliveryDistanceKm} km
                   {deliveryDurationMinutes != null &&
                     `, ${formatDeliveryDuration(deliveryDurationMinutes)}`}
                 </p>
+              )}
+              {deliveryError && (
+                <p className="mt-0.5 text-sm text-destructive">{deliveryError}</p>
               )}
             </div>
 

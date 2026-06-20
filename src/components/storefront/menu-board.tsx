@@ -27,7 +27,7 @@ export const WELCOME_CATEGORY_ID = "__welcome__";
 
 const WELCOME_CATEGORY: MenuCategoryDTO = {
   id: WELCOME_CATEGORY_ID,
-  name: "Donáška",
+  name: "Odber",
   imageUrl: "/couriermoto.webp",
   items: [],
 };

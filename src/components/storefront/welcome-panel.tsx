@@ -5,13 +5,18 @@ import {
   Clock,
   Loader2,
   Route,
+  ShoppingBag,
   Store,
+  Motorbike,
   Wallet,
 } from "lucide-react";
 
 import { DeliveryAddressInput } from "@/components/storefront/delivery-address-input";
 import { DeliveryAddressHistoryDropdown } from "@/components/storefront/delivery-address-history-dropdown";
-import { useStorefront } from "@/components/storefront/storefront-context";
+import {
+  useStorefront,
+  type FulfillmentMode,
+} from "@/components/storefront/storefront-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +30,70 @@ import { getStoreStreetLine } from "@/lib/delivery/address";
 import { formatMoney } from "@/lib/orders/types";
 import { formatDeliveryDuration } from "@/lib/delivery/format";
 import { cn } from "@/lib/utils";
+
+const FULFILLMENT_MODE_LABEL: Record<FulfillmentMode, string> = {
+  delivery: "Donáška",
+  pickup: "Osobný odber",
+};
+
+function OrderModePickerDropdown() {
+  const { fulfillmentMode, setFulfillmentMode } = useStorefront();
+  const label = FULFILLMENT_MODE_LABEL[fulfillmentMode];
+  const Icon = fulfillmentMode === "delivery" ? Motorbike : ShoppingBag;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "relative flex items-center",
+            "min-h-12 border-2 border-foreground bg-background py-1.5 text-sm text-foreground shadow-xs",
+            "transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+          )}
+        >
+          <span
+            className="pointer-events-none absolute left-3 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center"
+            aria-hidden
+          >
+            <Icon className="size-[1.40rem] text-foreground" />
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 overflow-hidden px-10 text-left ml-3">
+            <span className="text-[0.65rem] leading-none text-muted-foreground">
+              Spôsob odberu
+            </span>
+            <span className="truncate text-sm font-medium leading-tight">
+              {label}
+            </span>
+          </span>
+          <ChevronDown
+            className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-foreground"
+            aria-hidden
+          />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="max-w-[20rem] border-2 border-primary p-4">
+        <DropdownMenuRadioGroup
+          value={fulfillmentMode}
+          onValueChange={(v) => setFulfillmentMode(v as FulfillmentMode)}
+        >
+          <DropdownMenuRadioItem
+            value="delivery"
+            className="cursor-pointer py-2.5 text-sm font-medium"
+          >
+            Donáška
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem
+            value="pickup"
+            className="cursor-pointer py-2.5 text-sm font-medium"
+          >
+            Osobný odber
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 function StorePickerDropdown() {
   const { stores, nearbyStores, storeId, setStoreId, delivery } =
@@ -46,7 +115,7 @@ function StorePickerDropdown() {
         <button
           type="button"
           className={cn(
-            "relative flex items-center ml-auto ",
+            "relative flex items-center",
             "border-2 border-foreground bg-background text-sm text-foreground shadow-xs",
             "transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
             showStoreAddress ? "min-h-12 py-1.5" : "h-12",
@@ -215,16 +284,58 @@ function DeliveryQuoteDisplay({
   );
 }
 
+function PickupConfirmationDisplay({
+  storeStreetLine,
+  quoteAttempted,
+}: {
+  storeStreetLine: string;
+  quoteAttempted: boolean;
+}) {
+  if (!quoteAttempted) {
+    return (
+      <div className="flex min-h-[140px] flex-col items-center justify-center px-4 py-10 text-center text-muted-foreground">
+        <Store className="mb-3 size-10 opacity-40" />
+        <p className="text-base sm:text-lg">
+          Zadajte lokalitu pre výber najbližšej predajne.
+        </p>
+      </div>
+    );
+  }
+
+  if (!storeStreetLine) return null;
+
+  return (
+    <div className="flex min-h-[140px] flex-col items-center justify-center px-4 py-10 text-center">
+      <p className="max-w-md text-3xl font-bold text-foreground">
+        Budeme sa na Vás tešiť
+      </p>
+      <p className="mt-3 text-xl font-bold text-foreground">
+        Na adrese {storeStreetLine}
+      </p>
+    </div>
+  );
+}
+
 export function WelcomePanel({ isAuthed = false }: { isAuthed?: boolean }) {
   const {
     currency,
     delivery,
+    stores,
+    nearbyStores,
+    storeId,
+    fulfillmentMode,
     setDeliveryAddress,
     resetDelivery,
     onDeliveryPlaceSelected,
     pickDeliveryAddress,
     menuLoading,
   } = useStorefront();
+
+  const isPickup = fulfillmentMode === "pickup";
+  const currentStore =
+    nearbyStores.find((s) => s.id === storeId) ??
+    stores.find((s) => s.id === storeId);
+  const storeStreetLine = currentStore ? getStoreStreetLine(currentStore) : "";
 
   const canResetDelivery =
     delivery.address.trim().length > 0 ||
@@ -234,17 +345,18 @@ export function WelcomePanel({ isAuthed = false }: { isAuthed?: boolean }) {
 
   return (
     <div className="relative flex-1 md:border-r-2 md:border-primary">
-      <div className="absolute right-3 top-3 z-10 w-[min(100vw-2rem,20rem)] sm:right-4 sm:top-4 sm:w-auto">
+      <div className="absolute left-3 top-3 z-10 flex max-w-[calc(100vw-1.5rem)] flex-wrap items-stretch gap-2 sm:left-4 sm:top-4">
+        <OrderModePickerDropdown />
         <StorePickerDropdown />
       </div>
 
       <img
-        src="/delivery2.webp"
+        src={isPickup ? "/foodbag2.webp" : "/delivery2.webp"}
         alt="Box66"
         className="mx-auto h-auto w-[270px] pt-12 mt-24"
       />
       <h2 className="text-center text-3xl font-bold">
-        Zadajte adresu doručenia
+        {isPickup ? "Zadajte Vašu lokalitu" : "Zadajte adresu doručenia"}
       </h2>
 
       <div className="space-y-3 p-4 sm:p-6">
@@ -268,7 +380,14 @@ export function WelcomePanel({ isAuthed = false }: { isAuthed?: boolean }) {
           </div>
 
           <div className="mt-8">
-            <DeliveryQuoteDisplay currency={currency} delivery={delivery} />
+            {isPickup ? (
+              <PickupConfirmationDisplay
+                storeStreetLine={storeStreetLine}
+                quoteAttempted={delivery.quoteAttempted}
+              />
+            ) : (
+              <DeliveryQuoteDisplay currency={currency} delivery={delivery} />
+            )}
           </div>
         </div>
       </div>

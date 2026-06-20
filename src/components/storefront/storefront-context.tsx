@@ -24,6 +24,9 @@ const ADDRESS_KEY = "box66_delivery_address";
 const ADDRESS_CONFIRMED_KEY = "box66_delivery_address_confirmed";
 const DELIVERY_LAT_KEY = "box66_delivery_lat";
 const DELIVERY_LNG_KEY = "box66_delivery_lng";
+const FULFILLMENT_MODE_KEY = "box66_fulfillment_mode";
+
+export type FulfillmentMode = "delivery" | "pickup";
 
 type FeeQuote = {
   distanceKm: number;
@@ -67,6 +70,8 @@ type StorefrontContextValue = {
     coords?: { lat: number; lng: number },
   ) => Promise<void>;
   refreshDeliveryFee: () => void;
+  fulfillmentMode: FulfillmentMode;
+  setFulfillmentMode: (mode: FulfillmentMode) => void;
 };
 
 const StorefrontContext = createContext<StorefrontContextValue | null>(null);
@@ -122,6 +127,8 @@ export function StorefrontProvider({
   const [menuLoading, setMenuLoading] = useState(false);
   const [deliveryAddress, setDeliveryAddressState] = useState("");
   const [nearbyStores, setNearbyStores] = useState<RankedStore[]>([]);
+  const [fulfillmentMode, setFulfillmentModeState] =
+    useState<FulfillmentMode>("delivery");
   const [delivery, setDelivery] = useState<DeliveryState>({
     address: "",
     distanceKm: null,
@@ -270,6 +277,11 @@ export function StorefrontProvider({
       }
     }
 
+    const savedMode = readStorage(FULFILLMENT_MODE_KEY);
+    if (savedMode === "delivery" || savedMode === "pickup") {
+      setFulfillmentModeState(savedMode);
+    }
+
     const savedAddress = readStorage(ADDRESS_KEY);
     const wasConfirmed = readStorage(ADDRESS_CONFIRMED_KEY) === "1";
     const coords = readDeliveryCoords();
@@ -285,7 +297,7 @@ export function StorefrontProvider({
         address: savedAddress,
         quoteAttempted: wasConfirmed,
       }));
-      if (wasConfirmed) {
+      if (wasConfirmed && savedMode !== "pickup") {
         feeAddressRef.current = savedAddress;
         runFeeCalculation(savedAddress, activeStoreId, { notify: false });
       }
@@ -298,7 +310,9 @@ export function StorefrontProvider({
       if (id === storeId) return;
       switchStore(id);
       if (deliveryAddress.trim() && readStorage(ADDRESS_CONFIRMED_KEY) === "1") {
-        runFeeCalculation(deliveryAddress, id);
+        if (readStorage(FULFILLMENT_MODE_KEY) !== "pickup") {
+          runFeeCalculation(deliveryAddress, id);
+        }
       }
     },
     [storeId, deliveryAddress, switchStore, runFeeCalculation],
@@ -352,6 +366,36 @@ export function StorefrontProvider({
     [clearFeeCache, resetDelivery],
   );
 
+  const applyPickupLocation = useCallback(
+    (place: { address: string; lat: number; lng: number }) => {
+      setDeliveryAddressState(place.address);
+      writeStorage(ADDRESS_KEY, place.address);
+      writeStorage(DELIVERY_LAT_KEY, String(place.lat));
+      writeStorage(DELIVERY_LNG_KEY, String(place.lng));
+
+      const ranked = rankStoresByProximity(stores, place.lat, place.lng, 3);
+      setNearbyStores(ranked);
+
+      clearFeeCache();
+      const bestStoreId = ranked[0]?.id ?? storeId;
+      if (bestStoreId !== storeId) {
+        switchStore(bestStoreId);
+      }
+
+      setDelivery({
+        address: place.address,
+        distanceKm: null,
+        durationMinutes: null,
+        fee: null,
+        error: null,
+        pending: false,
+        quoteAttempted: true,
+      });
+      writeStorage(ADDRESS_CONFIRMED_KEY, "1");
+    },
+    [stores, storeId, switchStore, clearFeeCache],
+  );
+
   const applyDeliverySelection = useCallback(
     (place: { address: string; lat: number; lng: number }) => {
       setDeliveryAddressState(place.address);
@@ -375,9 +419,13 @@ export function StorefrontProvider({
   const onDeliveryPlaceSelected = useCallback(
     (place: { address: string; lat: number; lng: number }) => {
       pushDeliverySearchHistory(place);
-      applyDeliverySelection(place);
+      if (fulfillmentMode === "pickup") {
+        applyPickupLocation(place);
+      } else {
+        applyDeliverySelection(place);
+      }
     },
-    [applyDeliverySelection],
+    [fulfillmentMode, applyPickupLocation, applyDeliverySelection],
   );
 
   const pickDeliveryAddress = useCallback(
@@ -390,6 +438,27 @@ export function StorefrontProvider({
 
       let lat = coords?.lat;
       let lng = coords?.lng;
+
+      if (fulfillmentMode === "pickup") {
+        if (lat != null && lng != null) {
+          applyPickupLocation({ address: trimmed, lat, lng });
+        } else {
+          setDeliveryAddressState(trimmed);
+          writeStorage(ADDRESS_KEY, trimmed);
+          writeStorage(ADDRESS_CONFIRMED_KEY, "1");
+          setDelivery((d) => ({
+            ...d,
+            address: trimmed,
+            fee: null,
+            distanceKm: null,
+            durationMinutes: null,
+            error: null,
+            pending: false,
+            quoteAttempted: true,
+          }));
+        }
+        return;
+      }
 
       if (lat == null || lng == null) {
         const geo = await resolveDeliveryAddressCoords(trimmed);
@@ -409,7 +478,42 @@ export function StorefrontProvider({
 
       applyDeliverySelection({ address: trimmed, lat, lng });
     },
-    [storeId, applyDeliverySelection, clearFeeCache, runFeeCalculation],
+    [
+      storeId,
+      fulfillmentMode,
+      applyPickupLocation,
+      applyDeliverySelection,
+      clearFeeCache,
+      runFeeCalculation,
+    ],
+  );
+
+  const setFulfillmentMode = useCallback(
+    (mode: FulfillmentMode) => {
+      setFulfillmentModeState(mode);
+      writeStorage(FULFILLMENT_MODE_KEY, mode);
+
+      if (mode === "pickup") {
+        clearFeeCache();
+        setDelivery((d) => ({
+          ...d,
+          fee: null,
+          distanceKm: null,
+          durationMinutes: null,
+          error: null,
+          pending: false,
+        }));
+        return;
+      }
+
+      if (
+        deliveryAddress.trim() &&
+        readStorage(ADDRESS_CONFIRMED_KEY) === "1"
+      ) {
+        runFeeCalculation(deliveryAddress, storeId);
+      }
+    },
+    [deliveryAddress, storeId, clearFeeCache, runFeeCalculation],
   );
 
   const refreshDeliveryFee = useCallback(() => {
@@ -439,6 +543,8 @@ export function StorefrontProvider({
       onDeliveryPlaceSelected,
       pickDeliveryAddress,
       refreshDeliveryFee,
+      fulfillmentMode,
+      setFulfillmentMode,
     }),
     [
       stores,
@@ -456,6 +562,8 @@ export function StorefrontProvider({
       onDeliveryPlaceSelected,
       pickDeliveryAddress,
       refreshDeliveryFee,
+      fulfillmentMode,
+      setFulfillmentMode,
     ],
   );
 
