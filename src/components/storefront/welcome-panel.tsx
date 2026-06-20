@@ -246,7 +246,7 @@ function DeliveryQuoteDisplay({
           <div className="flex size-14 items-center justify-center rounded-full bg-yellow-400">
             <Route className="size-7" />
           </div>
-          <span className="text-xl font-bold tabular-nums text-foreground">
+          <span className="text-lg font-bold tabular-nums text-foreground">
             {delivery.distanceKm} km
           </span>
           <span className="text-sm">
@@ -259,7 +259,7 @@ function DeliveryQuoteDisplay({
             <div className="flex size-14 items-center justify-center rounded-full bg-yellow-400">
               <Clock className="size-7" />
             </div>
-            <span className="text-xl font-bold tabular-nums text-foreground">
+            <span className="text-lg font-bold tabular-nums text-foreground">
               {formatDeliveryDuration(delivery.durationMinutes)}
             </span>
             <span className="text-sm">
@@ -272,7 +272,7 @@ function DeliveryQuoteDisplay({
           <div className="flex size-14 items-center justify-center rounded-full bg-yellow-400">
             <Wallet className="size-7" />
           </div>
-          <span className="text-xl font-bold tabular-nums text-foreground">
+          <span className="text-lg font-bold tabular-nums text-foreground">
             {formatMoney(delivery.fee, currency)}
           </span>
           <span className="text-sm">
