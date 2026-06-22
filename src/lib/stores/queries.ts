@@ -8,6 +8,7 @@ export async function getStoresForOrg(organizationId: string) {
     where: { organizationId },
     orderBy: [{ isActive: "desc" }, { name: "asc" }],
     include: {
+      priceCoefficient: { select: { id: true, name: true, multiplier: true } },
       _count: {
         select: { menuItems: true, inventoryItems: true, orders: true, memberships: true },
       },

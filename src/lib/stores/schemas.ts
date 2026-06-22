@@ -46,6 +46,10 @@ export const StoreSchema = z.object({
     z.string().length(3, { error: "Mena musí mať 3 znaky (napr. EUR)." }),
   ),
   isActive: checkbox,
+  priceCoefficientId: z.preprocess(
+    emptyToUndefined,
+    z.uuid({ error: "Vyber koeficient cien." }).optional(),
+  ),
 });
 
 export type StoreInput = z.infer<typeof StoreSchema>;

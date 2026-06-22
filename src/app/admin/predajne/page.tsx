@@ -1,15 +1,27 @@
 import type { Metadata } from "next";
 
 import { requireActiveOrg } from "@/lib/auth/tenancy";
+import { getAccess } from "@/lib/auth/dal";
 import { getStoresForOrg } from "@/lib/stores/queries";
+import { getPriceCoefficients } from "@/lib/pricing/queries";
 import { StoreDialog } from "@/components/admin/stores/store-dialog";
 import { StoresTable, type StoreListItem } from "@/components/admin/stores/stores-table";
 
 export const metadata: Metadata = { title: "Predajne" };
 
 export default async function PredajnePage() {
-  const { organizationId } = await requireActiveOrg();
+  const [{ organizationId }, { isSuperAdmin }, coefficients] = await Promise.all([
+    requireActiveOrg(),
+    getAccess(),
+    getPriceCoefficients(),
+  ]);
   const stores = await getStoresForOrg(organizationId);
+
+  const coefficientOptions = coefficients.map((c) => ({
+    id: c.id,
+    name: c.name,
+    multiplier: c.multiplier.toString(),
+  }));
 
   const items: StoreListItem[] = stores.map((s) => ({
     id: s.id,
@@ -23,6 +35,8 @@ export default async function PredajnePage() {
     email: s.email ?? "",
     currency: s.currency,
     isActive: s.isActive,
+    priceCoefficientId: s.priceCoefficientId,
+    priceCoefficientName: s.priceCoefficient.name,
     menuCount: s._count.menuItems,
     inventoryCount: s._count.inventoryItems,
     memberCount: s._count.memberships,
@@ -38,9 +52,13 @@ export default async function PredajnePage() {
             predajní a môžeš pre ne spravovať menu a sklad.
           </p>
         </div>
-        <StoreDialog />
+        <StoreDialog coefficients={coefficientOptions} isSuperAdmin={isSuperAdmin} />
       </div>
-      <StoresTable stores={items} />
+      <StoresTable
+        stores={items}
+        coefficients={coefficientOptions}
+        isSuperAdmin={isSuperAdmin}
+      />
     </>
   );
 }

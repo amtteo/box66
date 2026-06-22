@@ -21,6 +21,7 @@ import {
 import { showCartAddedToast } from "@/components/storefront/cart-added-toast";
 import { useCart } from "@/components/storefront/cart-context";
 import { ComboChoiceDialog } from "@/components/storefront/combo-choice-dialog";
+import { MenuUpsellDialog } from "@/components/storefront/menu-upsell-dialog";
 import { WelcomePanel } from "@/components/storefront/welcome-panel";
 
 export const WELCOME_CATEGORY_ID = "__welcome__";
@@ -113,8 +114,8 @@ function MenuItemCard({
       </div>
       <CardContent className="flex flex-1 flex-col gap-3">
         <div className="flex flex-col items-center gap-0.5 text-center">
-          <h3 className="font-medium leading-tight">{item.name}</h3>
-          <span className="font-semibold tabular-nums">
+          <h3 className="font-bold leading-tight text-xl">{item.name}</h3>
+          <span className="font-bold tabular-nums">
             {formatMoney(item.price, currency)}
           </span>
         </div>
@@ -152,6 +153,10 @@ export function MenuBoard({
     : categories;
   const { add } = useCart();
   const [comboItem, setComboItem] = useState<MenuItemDTO | null>(null);
+  const [upsellItem, setUpsellItem] = useState<MenuItemDTO | null>(null);
+  const [upsellReturnItem, setUpsellReturnItem] = useState<MenuItemDTO | null>(
+    null,
+  );
   const [activeId, setActiveId] = useState(displayCategories[0]?.id ?? "");
   const mobileTabRefs = useRef(new Map<string, HTMLButtonElement>());
 
@@ -171,6 +176,10 @@ export function MenuBoard({
   function handleAdd(item: MenuItemDTO) {
     if (item.choiceGroups.length > 0) {
       setComboItem(item);
+      return;
+    }
+    if (item.menuUpsell) {
+      setUpsellItem(item);
       return;
     }
     add(item);
@@ -258,7 +267,29 @@ export function MenuBoard({
       <ComboChoiceDialog
         item={comboItem}
         currency={currency}
-        onClose={() => setComboItem(null)}
+        onClose={() => {
+          setComboItem(null);
+          setUpsellReturnItem(null);
+        }}
+        onBack={
+          upsellReturnItem
+            ? () => {
+                setComboItem(null);
+                setUpsellItem(upsellReturnItem);
+                setUpsellReturnItem(null);
+              }
+            : undefined
+        }
+      />
+      <MenuUpsellDialog
+        item={upsellItem}
+        currency={currency}
+        onClose={() => setUpsellItem(null)}
+        onChooseMenu={(menuItem, singleItem) => {
+          setUpsellReturnItem(singleItem);
+          setComboItem(menuItem);
+          setUpsellItem(null);
+        }}
       />
     </>
   );

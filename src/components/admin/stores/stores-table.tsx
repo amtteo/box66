@@ -14,15 +14,24 @@ import {
 } from "@/components/ui/table";
 import { deleteStore } from "@/lib/stores/actions";
 import { DeleteButton } from "@/components/admin/catalog/delete-button";
-import { StoreDialog, type StoreFormValues } from "@/components/admin/stores/store-dialog";
+import { StoreDialog, type PriceCoefficientOption, type StoreFormValues } from "@/components/admin/stores/store-dialog";
 
 export type StoreListItem = StoreFormValues & {
+  priceCoefficientName: string;
   menuCount: number;
   inventoryCount: number;
   memberCount: number;
 };
 
-export function StoresTable({ stores }: { stores: StoreListItem[] }) {
+export function StoresTable({
+  stores,
+  coefficients = [],
+  isSuperAdmin = false,
+}: {
+  stores: StoreListItem[];
+  coefficients?: PriceCoefficientOption[];
+  isSuperAdmin?: boolean;
+}) {
   if (stores.length === 0) {
     return (
       <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">
@@ -42,6 +51,7 @@ export function StoresTable({ stores }: { stores: StoreListItem[] }) {
             <TableHead className="text-right">Sklad</TableHead>
             <TableHead className="text-right">Tím</TableHead>
             <TableHead>Stav</TableHead>
+            {isSuperAdmin && <TableHead>Koeficient</TableHead>}
             <TableHead className="w-20 text-right">Akcie</TableHead>
           </TableRow>
         </TableHeader>
@@ -63,10 +73,17 @@ export function StoresTable({ stores }: { stores: StoreListItem[] }) {
                   {store.isActive ? "Aktívna" : "Zatvorená"}
                 </Badge>
               </TableCell>
+              {isSuperAdmin && (
+                <TableCell className="text-sm text-muted-foreground">
+                  {store.priceCoefficientName}
+                </TableCell>
+              )}
               <TableCell>
                 <div className="flex justify-end gap-1">
                   <StoreDialog
                     store={store}
+                    coefficients={coefficients}
+                    isSuperAdmin={isSuperAdmin}
                     trigger={
                       <Button variant="ghost" size="icon-sm">
                         <Pencil className="size-4" />

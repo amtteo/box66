@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
-import { Role } from "@/lib/auth/dal";
+import { Role, getAccess } from "@/lib/auth/dal";
 import { getActiveContext } from "@/lib/auth/active-context";
 import { authorizeOrg } from "@/lib/auth/tenancy";
 import { slugify, uniqueSlug } from "@/lib/catalog/slug";
@@ -14,6 +14,7 @@ import {
   type FormState,
 } from "@/lib/forms";
 import { StoreSchema } from "@/lib/stores/schemas";
+import { getDefaultPriceCoefficientId } from "@/lib/pricing/queries";
 
 const PATH = "/admin/predajne";
 
@@ -39,6 +40,8 @@ export async function saveStore(
   }
   await authorizeOrg(organizationId, Role.ADMIN);
 
+  const { isSuperAdmin } = await getAccess();
+
   const parsed = StoreSchema.safeParse({
     name: formData.get("name"),
     slug: formData.get("slug"),
@@ -50,6 +53,7 @@ export async function saveStore(
     email: formData.get("email"),
     currency: formData.get("currency"),
     isActive: formData.get("isActive"),
+    priceCoefficientId: isSuperAdmin ? formData.get("priceCoefficientId") : undefined,
   });
   if (!parsed.success) {
     return { ok: false, errors: flattenZodError(parsed.error), values: rawValues(formData) };
@@ -65,6 +69,12 @@ export async function saveStore(
   });
 
   try {
+    const priceCoefficientId = isSuperAdmin
+      ? (d.priceCoefficientId ?? (await getDefaultPriceCoefficientId()))
+      : id
+        ? undefined
+        : await getDefaultPriceCoefficientId();
+
     const data = {
       name: d.name,
       slug,
@@ -76,12 +86,13 @@ export async function saveStore(
       email: d.email ?? null,
       currency: d.currency,
       isActive: d.isActive,
+      ...(priceCoefficientId ? { priceCoefficientId } : {}),
     };
     if (id) {
       await prisma.store.update({ where: { id }, data });
     } else {
       const created = await prisma.store.create({
-        data: { ...data, organizationId },
+        data: { ...data, organizationId, priceCoefficientId: priceCoefficientId! },
       });
       const { seedStoreDeliveryZones } = await import("@/lib/delivery/actions");
       await seedStoreDeliveryZones(created.id);

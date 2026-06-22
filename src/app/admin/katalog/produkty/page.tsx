@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Plus } from "lucide-react";
 
-import { getProducts, getCategoryOptions } from "@/lib/catalog/queries";
+import { getProducts, getCategoryOptions, getMenuUpsellProductOptions } from "@/lib/catalog/queries";
 import { Button } from "@/components/ui/button";
 import { CatalogSplit } from "@/components/admin/catalog/catalog-split";
 import { PanelShell } from "@/components/admin/catalog/panel-shell";
@@ -24,9 +24,10 @@ type PageProps = {
 export default async function ProduktyPage({ searchParams }: PageProps) {
   const { panel, item } = await searchParams;
 
-  const [products, categoryOptions] = await Promise.all([
+  const [products, categoryOptions, menuUpsellOptions] = await Promise.all([
     getProducts(),
     getCategoryOptions(),
+    getMenuUpsellProductOptions(),
   ]);
 
   const categories = categoryOptions.map((c) => ({ id: c.id, name: c.name }));
@@ -38,7 +39,7 @@ export default async function ProduktyPage({ searchParams }: PageProps) {
     name: p.name,
     slug: p.slug,
     description: p.description ?? "",
-    suggestedPrice: p.suggestedPrice?.toString() ?? "",
+    basePrice: p.basePrice?.toString() ?? "",
     sku: p.sku ?? "",
     allergens: p.allergens,
     kcal: p.kcal?.toString() ?? "",
@@ -46,6 +47,7 @@ export default async function ProduktyPage({ searchParams }: PageProps) {
     sortOrder: p.sortOrder,
     isActive: p.isActive,
     isComboOption: p.isComboOption,
+    menuUpsellProductId: p.menuUpsellProductId,
     imageUrl: p.imageUrl,
     recipe: p.recipe
       ? {
@@ -58,12 +60,18 @@ export default async function ProduktyPage({ searchParams }: PageProps) {
 
   const withRecipe = items.filter((p) => p.recipe).length;
 
+  const upsellOptions = menuUpsellOptions.map((p) => ({
+    id: p.id,
+    name: p.name,
+    categoryName: p.category.name,
+  }));
+
   let panelContent = null;
   if (panel === "product") {
     if (item === "new") {
         panelContent = (
           <PanelShell key="product-new" title="Nový produkt">
-            <ProductForm key="new" categories={categories} />
+            <ProductForm key="new" categories={categories} menuUpsellOptions={upsellOptions} />
           </PanelShell>
         );
     } else if (item) {
@@ -71,7 +79,12 @@ export default async function ProduktyPage({ searchParams }: PageProps) {
       if (product) {
         panelContent = (
           <PanelShell key={item} title={product.name}>
-            <ProductForm key={item} product={product} categories={categories} />
+            <ProductForm
+              key={item}
+              product={product}
+              categories={categories}
+              menuUpsellOptions={upsellOptions.filter((o) => o.id !== product.id)}
+            />
           </PanelShell>
         );
       }

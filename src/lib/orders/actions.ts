@@ -17,6 +17,7 @@ import {
 import { CheckoutSchema, ORDER_STATUS_FLOW, defaultRestoreStock, orderHadStockDeducted } from "@/lib/orders/schemas";
 import { computeDeliveryForStore } from "@/lib/delivery/compute";
 import { estimatedDeliveryMinutes } from "@/lib/delivery/format";
+import { resolveMenuItemPrice, toNumber } from "@/lib/pricing/resolve";
 import {
   deductStockForOrder,
   reverseStockForOrder,
@@ -79,11 +80,17 @@ export async function placeOrder(
 
   const store = await prisma.store.findFirst({
     where: { id: data.storeId, isActive: true },
-    select: { id: true, currency: true },
+    select: {
+      id: true,
+      currency: true,
+      priceCoefficient: { select: { multiplier: true } },
+    },
   });
   if (!store) {
     return { ok: false, message: "Predajňa nie je dostupná." };
   }
+
+  const priceMultiplier = Number(store.priceCoefficient.multiplier);
 
   // Načítaj iba dostupné položky menu danej predajne a prepočítaj ceny.
   const menuItemIds = [...new Set(data.items.map((i) => i.menuItemId))];
@@ -96,11 +103,12 @@ export async function placeOrder(
     },
     select: {
       id: true,
-      price: true,
+      customPrice: true,
       productId: true,
       product: {
         select: {
           name: true,
+          basePrice: true,
           choiceGroups: {
             select: {
               id: true,
@@ -230,7 +238,17 @@ export async function placeOrder(
     }
 
     const resolvedChoices = [...choicesByGroup.values()].flat();
-    const unitPrice = Number(mi.price);
+    const unitPrice = resolveMenuItemPrice({
+      basePrice: toNumber(mi.product.basePrice),
+      multiplier: priceMultiplier,
+      customPrice: toNumber(mi.customPrice),
+    });
+    if (unitPrice == null) {
+      return {
+        ok: false,
+        message: "Niektoré položky nemajú platnú cenu. Obnov stránku a skús to znova.",
+      };
+    }
     orderLines.push({
       menuItemId: mi.id,
       productId: mi.productId,

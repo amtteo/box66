@@ -45,6 +45,27 @@ export async function getProducts() {
   });
 }
 
+/** Produkty s výberom v kombe — ciele upsellu single → MENU. */
+export async function getMenuUpsellProductOptions(excludeProductId?: string) {
+  return prisma.product.findMany({
+    where: {
+      isActive: true,
+      choiceGroups: { some: {} },
+      ...(excludeProductId ? { id: { not: excludeProductId } } : {}),
+    },
+    orderBy: [
+      { category: { sortOrder: "asc" } },
+      { category: { name: "asc" } },
+      { name: "asc" },
+    ],
+    select: {
+      id: true,
+      name: true,
+      category: { select: { name: true } },
+    },
+  });
+}
+
 /** Jeden produkt + kategória (pre detail / správu výberov). */
 export async function getProductById(id: string) {
   return prisma.product.findUnique({
@@ -54,6 +75,7 @@ export async function getProductById(id: string) {
       name: true,
       isActive: true,
       isComboOption: true,
+      menuUpsellProductId: true,
       category: { select: { id: true, name: true } },
     },
   });

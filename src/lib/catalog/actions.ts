@@ -124,7 +124,7 @@ export async function saveProduct(
     name: formData.get("name"),
     slug: formData.get("slug"),
     description: formData.get("description"),
-    suggestedPrice: formData.get("suggestedPrice"),
+    basePrice: formData.get("basePrice"),
     sku: formData.get("sku"),
     allergens: formData.getAll("allergens"),
     kcal: formData.get("kcal"),
@@ -132,6 +132,7 @@ export async function saveProduct(
     sortOrder: formData.get("sortOrder"),
     isActive: formData.get("isActive"),
     isComboOption: formData.get("isComboOption"),
+    menuUpsellProductId: formData.get("menuUpsellProductId"),
   });
 
   if (!parsed.success) {
@@ -144,6 +145,13 @@ export async function saveProduct(
   }
 
   const d = parsed.data;
+  if (d.menuUpsellProductId && id && d.menuUpsellProductId === id) {
+    return {
+      ok: false,
+      errors: { menuUpsellProductId: ["MENU verzia nemôže byť ten istý produkt."] },
+      values: rawValues(formData),
+    };
+  }
   const slug = await uniqueSlug(d.slug ?? slugify(d.name), async (c) => {
     const found = await prisma.product.findUnique({
       where: { slug: c },
@@ -159,7 +167,7 @@ export async function saveProduct(
       slug,
       description: d.description ?? null,
       imageUrl: image.url,
-      suggestedPrice: d.suggestedPrice ?? null,
+      basePrice: d.basePrice ?? null,
       sku: d.sku ?? null,
       allergens: d.allergens,
       kcal: d.kcal ?? null,
@@ -167,6 +175,7 @@ export async function saveProduct(
       sortOrder: d.sortOrder,
       isActive: d.isActive,
       isComboOption: d.isComboOption,
+      menuUpsellProductId: d.menuUpsellProductId ?? null,
     };
     if (id) {
       await prisma.product.update({ where: { id }, data });

@@ -80,13 +80,13 @@ function OrderModePickerDropdown() {
         >
           <DropdownMenuRadioItem
             value="delivery"
-            className="cursor-pointer py-2.5 text-sm font-medium"
+            className="cursor-pointer py-2.5 text-sm font-bold focus:bg-yellow-400"
           >
             Donáška
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem
             value="pickup"
-            className="cursor-pointer py-2.5 text-sm font-medium"
+            className="cursor-pointer py-2.5 font-bold focus:bg-yellow-400"
           >
             Osobný odber
           </DropdownMenuRadioItem>

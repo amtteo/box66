@@ -149,12 +149,14 @@ model Store {
   latitude       Decimal? @db.Decimal(10, 7)
   longitude      Decimal? @db.Decimal(10, 7)
   openingHours   Json?
-  currency       String   @default("EUR")
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  currency           String   @default("EUR")
+  priceCoefficientId String   @db.Uuid
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceCoefficient PriceCoefficient @relation(fields: [priceCoefficientId], references: [id], onDelete: Restrict)
   memberships    Membership[]
   menuItems      MenuItem[]
   inventoryItems InventoryItem[]
@@ -222,6 +224,20 @@ model Membership {
 
 // ─────────────────────── Global catalog (superadmin) ─────────────────────
 
+/// Koeficient cien predajne — násobí základnú cenu z katalógu (napr. Standard 1.0).
+model PriceCoefficient {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  name       String
+  multiplier Decimal  @db.Decimal(6, 4)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  stores Store[]
+
+  @@map("price_coefficients")
+}
+
 /// Kategória produktov (napr. Burgre, Prílohy, Nápoje). Globálna.
 model Category {
   id          String   @id @default(uuid(7)) @db.Uuid
@@ -252,7 +268,7 @@ model Product {
   slug           String   @unique
   description    String?
   imageUrl       String?
-  suggestedPrice Decimal? @db.Decimal(10, 2)
+  basePrice      Decimal? @db.Decimal(10, 2)
   sku            String?
   allergens      String[]
   kcal           Int?
@@ -262,13 +278,18 @@ model Product {
   /// Smie byť vybraný ako voľba v kombe (napr. konkrétny nápoj). Pri produktoch
   /// v „choice pool" kategórii rozhoduje, ktoré sa reálne ponúknu vo výbere.
   isComboOption  Boolean  @default(false)
+  /// Voliteľný odkaz na MENU verziu (kombo s nápojom) — pri pridaní single
+  /// produktu do košíka sa zákazníkovi ponúkne upsell na tento produkt.
+  menuUpsellProductId String? @db.Uuid
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  category     Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  recipe       Recipe?
-  menuItems    MenuItem[]
-  choiceGroups ProductChoiceGroup[]
+  category            Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  recipe              Recipe?
+  menuItems           MenuItem[]
+  choiceGroups        ProductChoiceGroup[]
+  menuUpsellProduct   Product?             @relation("MenuUpsell", fields: [menuUpsellProductId], references: [id], onDelete: SetNull)
+  menuUpsellFor       Product[]            @relation("MenuUpsell")
 
   @@index([categoryId])
   @@map("products")
@@ -416,12 +437,13 @@ model RecipeItem {
 
 // ──────────────────────────── Per-store ──────────────────────────
 
-/// Položka menu predajne — predajňa zapne produkt a nastaví cenu/dostupnosť.
+/// Položka menu predajne — predajňa zapne produkt a nastaví dostupnosť.
+/// `customPrice` je voliteľný override centrálou; inak platí basePrice × koeficient predajne.
 model MenuItem {
   id          String   @id @default(uuid(7)) @db.Uuid
   storeId     String   @db.Uuid
   productId   String   @db.Uuid
-  price       Decimal  @db.Decimal(10, 2)
+  customPrice Decimal? @db.Decimal(10, 2)
   isAvailable Boolean  @default(true)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())

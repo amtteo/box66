@@ -26,6 +26,7 @@ export function buildMenuCategories(menu: PublicMenuItem[]): MenuCategoryDTO[] {
       categoryId: cat.id,
       categoryName: cat.name,
       choiceGroups: mi.choiceGroups,
+      menuUpsell: mi.menuUpsell,
     });
   }
   return [...map.values()];

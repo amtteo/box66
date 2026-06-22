@@ -118,7 +118,7 @@ export const ProductSchema = z.object({
   slug: optionalSlug,
   description: optionalText,
   imageUrl: optionalShortText,
-  suggestedPrice: z.preprocess(
+  basePrice: z.preprocess(
     emptyToUndefined,
     z.coerce
       .number({ error: "Zadaj platnú cenu." })
@@ -133,6 +133,10 @@ export const ProductSchema = z.object({
   sortOrder,
   isActive: checkbox,
   isComboOption: checkbox,
+  menuUpsellProductId: z.preprocess(
+    (v) => (v === "__none__" || v === "" || v == null ? undefined : v),
+    z.uuid({ error: "Vyber platný MENU produkt." }).optional(),
+  ),
 });
 
 export const IngredientSchema = z.object({

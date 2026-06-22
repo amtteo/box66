@@ -2,6 +2,7 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { OrderStatus } from "@/generated/prisma/enums";
+import { resolveMenuItemPrice, toNumber } from "@/lib/pricing/resolve";
 
 /**
  * Predvolená verejná predajňa pre úvodnú stránku. Zatiaľ máme jednu prevádzku,
@@ -21,6 +22,7 @@ export type MenuChoiceOption = {
   menuItemId: string;
   productId: string;
   name: string;
+  imageUrl: string | null;
 };
 
 /** Skupina výberu produktu s možnosťami dostupnými v danej predajni. */
@@ -30,6 +32,15 @@ export type MenuChoiceGroup = {
   minSelect: number;
   maxSelect: number;
   options: MenuChoiceOption[];
+};
+
+/** MENU upsell — dostupná MENU verzia single produktu v predajni. */
+export type MenuUpsellItem = {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  price: number;
+  choiceGroups: MenuChoiceGroup[];
 };
 
 export type PublicMenuItem = {
@@ -43,6 +54,7 @@ export type PublicMenuItem = {
     allergens: string[];
     kcal: number | null;
     prepMinutes: number | null;
+    menuUpsellProductId: string | null;
     category: {
       id: string;
       name: string;
@@ -51,46 +63,69 @@ export type PublicMenuItem = {
     };
   };
   choiceGroups: MenuChoiceGroup[];
+  menuUpsell: MenuUpsellItem | null;
 };
 
 /** Dostupné položky menu predajne pre verejné objednávanie (zoradené podľa kategórie). */
 export async function getPublicMenu(storeId: string): Promise<PublicMenuItem[]> {
-  const menuItems = await prisma.menuItem.findMany({
-    where: { storeId, isAvailable: true, product: { isActive: true } },
-    orderBy: [{ product: { category: { sortOrder: "asc" } } }, { sortOrder: "asc" }],
-    select: {
-      id: true,
-      price: true,
-      product: {
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          imageUrl: true,
-          allergens: true,
-          kcal: true,
-          prepMinutes: true,
-          category: {
-            select: { id: true, name: true, sortOrder: true, imageUrl: true },
-          },
-          choiceGroups: {
-            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-            select: {
-              id: true,
-              label: true,
-              minSelect: true,
-              maxSelect: true,
-              categoryId: true,
+  const [store, menuItems] = await Promise.all([
+    prisma.store.findUnique({
+      where: { id: storeId },
+      select: { priceCoefficient: { select: { multiplier: true } } },
+    }),
+    prisma.menuItem.findMany({
+      where: { storeId, isAvailable: true, product: { isActive: true } },
+      orderBy: [{ product: { category: { sortOrder: "asc" } } }, { sortOrder: "asc" }],
+      select: {
+        id: true,
+        customPrice: true,
+        product: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            imageUrl: true,
+            allergens: true,
+            kcal: true,
+            prepMinutes: true,
+            basePrice: true,
+            menuUpsellProductId: true,
+            category: {
+              select: { id: true, name: true, sortOrder: true, imageUrl: true },
+            },
+            choiceGroups: {
+              orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+              select: {
+                id: true,
+                label: true,
+                minSelect: true,
+                maxSelect: true,
+                categoryId: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+  ]);
+
+  const multiplier = toNumber(store?.priceCoefficient.multiplier) ?? 1;
+
+  const pricedItems = menuItems
+    .map((mi) => {
+      const price = resolveMenuItemPrice({
+        basePrice: toNumber(mi.product.basePrice),
+        multiplier,
+        customPrice: toNumber(mi.customPrice),
+      });
+      if (price == null) return null;
+      return { ...mi, price };
+    })
+    .filter((mi): mi is NonNullable<typeof mi> => mi != null);
 
   // Pool kategórie použité v skupinách výberu naprieč menu.
   const poolCategoryIds = new Set<string>();
-  for (const mi of menuItems) {
+  for (const mi of pricedItems) {
     for (const g of mi.product.choiceGroups) poolCategoryIds.add(g.categoryId);
   }
 
@@ -110,7 +145,7 @@ export async function getPublicMenu(storeId: string): Promise<PublicMenuItem[]> 
       orderBy: [{ sortOrder: "asc" }, { product: { name: "asc" } }],
       select: {
         id: true,
-        product: { select: { id: true, name: true, categoryId: true } },
+        product: { select: { id: true, name: true, categoryId: true, imageUrl: true } },
       },
     });
     for (const oi of optionItems) {
@@ -119,35 +154,58 @@ export async function getPublicMenu(storeId: string): Promise<PublicMenuItem[]> 
         menuItemId: oi.id,
         productId: oi.product.id,
         name: oi.product.name,
+        imageUrl: oi.product.imageUrl,
       });
       optionsByCategory.set(oi.product.categoryId, list);
     }
   }
 
-  return menuItems.map((mi) => ({
-    id: mi.id,
-    price: Number(mi.price),
-    product: {
-      id: mi.product.id,
-      name: mi.product.name,
-      description: mi.product.description,
-      imageUrl: mi.product.imageUrl,
-      allergens: mi.product.allergens,
-      kcal: mi.product.kcal,
-      prepMinutes: mi.product.prepMinutes,
-      category: mi.product.category,
-    },
-    // Ponúkni len skupiny, ktoré majú v tejto predajni aspoň jednu možnosť.
-    choiceGroups: mi.product.choiceGroups
-      .map((g) => ({
-        id: g.id,
-        label: g.label,
-        minSelect: g.minSelect,
-        maxSelect: g.maxSelect,
-        options: optionsByCategory.get(g.categoryId) ?? [],
-      }))
-      .filter((g) => g.options.length > 0),
-  }));
+  return pricedItems.map((mi) => {
+    const built = {
+      id: mi.id,
+      price: mi.price,
+      product: {
+        id: mi.product.id,
+        name: mi.product.name,
+        description: mi.product.description,
+        imageUrl: mi.product.imageUrl,
+        allergens: mi.product.allergens,
+        kcal: mi.product.kcal,
+        prepMinutes: mi.product.prepMinutes,
+        menuUpsellProductId: mi.product.menuUpsellProductId,
+        category: mi.product.category,
+      },
+      choiceGroups: mi.product.choiceGroups
+        .map((g) => ({
+          id: g.id,
+          label: g.label,
+          minSelect: g.minSelect,
+          maxSelect: g.maxSelect,
+          options: optionsByCategory.get(g.categoryId) ?? [],
+        }))
+        .filter((g) => g.options.length > 0),
+      menuUpsell: null as MenuUpsellItem | null,
+    };
+
+    return built;
+  }).map((mi, _idx, arr) => {
+    const upsellProductId = mi.product.menuUpsellProductId;
+    if (!upsellProductId) return mi;
+
+    const upsellSource = arr.find((x) => x.product.id === upsellProductId);
+    if (!upsellSource || upsellSource.choiceGroups.length === 0) return mi;
+
+    return {
+      ...mi,
+      menuUpsell: {
+        id: upsellSource.id,
+        name: upsellSource.product.name,
+        imageUrl: upsellSource.product.imageUrl,
+        price: upsellSource.price,
+        choiceGroups: upsellSource.choiceGroups,
+      },
+    };
+  });
 }
 
 /** Zoznam objednávok predajne pre admin (najnovšie hore). */

@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { removeMenuItem } from "@/lib/menu/actions";
 import { DeleteButton } from "@/components/admin/catalog/delete-button";
 import { MenuAvailabilitySwitch } from "@/components/admin/menu/menu-availability-switch";
+import { MenuPriceEditor } from "@/components/admin/menu/menu-price-editor";
 
 export type MenuListItem = {
   menuItemId: string;
@@ -19,6 +20,8 @@ export type MenuListItem = {
   isAvailable: boolean;
   imageUrl: string | null;
   productActive: boolean;
+  effectivePrice: number | null;
+  customPrice: string | null;
 };
 
 type CategoryGroup = {
@@ -51,9 +54,11 @@ function groupByCategory(items: MenuListItem[]): CategoryGroup[] {
 function MenuItemCard({
   item,
   isSuperAdmin,
+  currency,
 }: {
   item: MenuListItem;
   isSuperAdmin: boolean;
+  currency: string;
 }) {
   const [isAvailable, setIsAvailable] = useState(item.isAvailable);
 
@@ -110,6 +115,15 @@ function MenuItemCard({
           compact
         />
       </div>
+
+      {isSuperAdmin && (
+        <MenuPriceEditor
+          menuItemId={item.menuItemId}
+          effectivePrice={item.effectivePrice}
+          customPrice={item.customPrice}
+          currency={currency}
+        />
+      )}
     </article>
   );
 }
@@ -117,9 +131,11 @@ function MenuItemCard({
 export function MenuTable({
   items,
   isSuperAdmin,
+  currency,
 }: {
   items: MenuListItem[];
   isSuperAdmin: boolean;
+  currency: string;
 }) {
   const groups = useMemo(() => groupByCategory(items), [items]);
 
@@ -140,7 +156,12 @@ export function MenuTable({
           <h2 className="mb-3 text-sm font-semibold tracking-tight">{group.name}</h2>
           <div className="grid grid-cols-3 gap-3 lg:grid-cols-5 lg:gap-4">
             {group.items.map((item) => (
-              <MenuItemCard key={item.menuItemId} item={item} isSuperAdmin={isSuperAdmin} />
+              <MenuItemCard
+                key={item.menuItemId}
+                item={item}
+                isSuperAdmin={isSuperAdmin}
+                currency={currency}
+              />
             ))}
           </div>
         </section>

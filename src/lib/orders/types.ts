@@ -5,6 +5,7 @@ export type MenuChoiceOptionDTO = {
   menuItemId: string;
   productId: string;
   name: string;
+  imageUrl: string | null;
 };
 
 /** Skupina výberu na kombo produkte (napr. „Vyber nápoj"). */
@@ -14,6 +15,15 @@ export type MenuChoiceGroupDTO = {
   minSelect: number;
   maxSelect: number;
   options: MenuChoiceOptionDTO[];
+};
+
+/** MENU upsell — dostupná MENU verzia pri objednávaní single produktu. */
+export type MenuUpsellDTO = {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  price: number;
+  choiceGroups: MenuChoiceGroupDTO[];
 };
 
 export type MenuItemDTO = {
@@ -30,6 +40,8 @@ export type MenuItemDTO = {
   categoryName: string;
   /** Skupiny výberu (kombo) — ak má aspoň jednu, pred pridaním sa zobrazí výber. */
   choiceGroups: MenuChoiceGroupDTO[];
+  /** Ponuka MENU verzie pri pridaní single produktu (burger → menu s nápojom). */
+  menuUpsell: MenuUpsellDTO | null;
 };
 
 export type MenuCategoryDTO = {

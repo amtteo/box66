@@ -20,6 +20,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { FieldError, FormMessage } from "@/components/admin/form-feedback";
 
 export type StoreFormValues = {
@@ -34,19 +41,33 @@ export type StoreFormValues = {
   email: string;
   currency: string;
   isActive: boolean;
+  priceCoefficientId: string;
+};
+
+export type PriceCoefficientOption = {
+  id: string;
+  name: string;
+  multiplier: string;
 };
 
 export function StoreDialog({
   store,
   trigger,
+  coefficients = [],
+  isSuperAdmin = false,
 }: {
   store?: StoreFormValues;
   trigger?: ReactNode;
+  coefficients?: PriceCoefficientOption[];
+  isSuperAdmin?: boolean;
 }) {
   const isEdit = !!store;
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<FormState>(undefined);
   const [pending, startTransition] = useTransition();
+  const defaultCoefficientId =
+    store?.priceCoefficientId ?? coefficients[0]?.id ?? "";
+  const [priceCoefficientId, setPriceCoefficientId] = useState(defaultCoefficientId);
 
   function onSubmit(formData: FormData) {
     startTransition(async () => {
@@ -67,7 +88,10 @@ export function StoreDialog({
       open={open}
       onOpenChange={(o) => {
         setOpen(o);
-        if (o) setState(undefined);
+        if (o) {
+          setState(undefined);
+          setPriceCoefficientId(defaultCoefficientId);
+        }
       }}
     >
       <DialogTrigger asChild>
@@ -148,6 +172,29 @@ export function StoreDialog({
             </div>
             <Switch id="isActive" name="isActive" defaultChecked={store?.isActive ?? true} />
           </div>
+
+          {isSuperAdmin && coefficients.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="priceCoefficientId">Koeficient cien</Label>
+              <input type="hidden" name="priceCoefficientId" value={priceCoefficientId} />
+              <Select
+                value={priceCoefficientId}
+                onValueChange={setPriceCoefficientId}
+              >
+                <SelectTrigger id="priceCoefficientId" className="w-full">
+                  <SelectValue placeholder="Vyber koeficient" />
+                </SelectTrigger>
+                <SelectContent>
+                  {coefficients.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name} ({Number(c.multiplier).toFixed(2)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError messages={state?.errors?.priceCoefficientId} />
+            </div>
+          )}
 
           <DialogFooter>
             <DialogClose asChild>

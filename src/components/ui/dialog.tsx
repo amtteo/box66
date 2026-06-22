@@ -31,6 +31,25 @@ function DialogClose({
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
 }
 
+function DialogCloseButton({
+  className,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Close>) {
+  return (
+    <DialogPrimitive.Close
+      data-slot="dialog-close-button"
+      className={cn(
+        "flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-foreground bg-background outline-none transition-colors hover:bg-accent focus:outline-none focus-visible:outline-none focus-visible:ring-0 disabled:pointer-events-none",
+        className,
+      )}
+      {...props}
+    >
+      <XIcon className="size-5" />
+      <span className="sr-only">Zavrieť</span>
+    </DialogPrimitive.Close>
+  )
+}
+
 function DialogOverlay({
   className,
   ...props
@@ -51,9 +70,13 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  circleCloseButton = false,
+  closeButtonClassName,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
+  circleCloseButton?: boolean
+  closeButtonClassName?: string
 }) {
   return (
     <DialogPortal data-slot="dialog-portal">
@@ -67,15 +90,20 @@ function DialogContent({
         {...props}
       >
         {children}
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
-          >
-            <XIcon />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
-        )}
+        {showCloseButton &&
+          (circleCloseButton ? (
+            <DialogCloseButton
+              className={cn("absolute top-4 right-4", closeButtonClassName)}
+            />
+          ) : (
+            <DialogPrimitive.Close
+              data-slot="dialog-close"
+              className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            >
+              <XIcon />
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
+          ))}
       </DialogPrimitive.Content>
     </DialogPortal>
   )
@@ -147,6 +175,7 @@ function DialogDescription({
 export {
   Dialog,
   DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,

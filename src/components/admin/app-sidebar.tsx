@@ -6,6 +6,7 @@ import {
   Boxes,
   Building2,
   LayoutDashboard,
+  Percent,
   Receipt,
   Store,
   Truck,
@@ -61,6 +62,7 @@ const PLATFORMA: NavItem[] = [
   { title: "Katalóg produktov", href: "/admin/katalog", icon: Boxes, cap: "superAdmin" },
   { title: "Donáška (šablóna)", href: "/admin/katalog/donaska", icon: Truck, cap: "superAdmin" },
   { title: "Organizácie", href: "/admin/organizacie", icon: Building2, cap: "superAdmin" },
+  { title: "Koeficienty cien", href: "/admin/koeficienty-cien", icon: Percent, cap: "superAdmin" },
 ];
 
 type Props = {

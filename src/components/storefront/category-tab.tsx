@@ -60,9 +60,8 @@ export function CategoryTab({
       </div>
       <span
         className={cn(
-          "line-clamp-2 text-center leading-tight",
-          layout === "mobile" ? "text-xs" : "text-sm",
-          isActive ? "font-semibold text-foreground" : "text-muted-foreground",
+          "line-clamp-2 text-center leading-tight text-foreground font-bold",
+          layout === "mobile" ? "text-sm" : "text-lg",
         )}
       >
         {category.name}

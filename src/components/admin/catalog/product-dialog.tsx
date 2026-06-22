@@ -151,16 +151,16 @@ export function ProductDialog({
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="suggestedPrice">Navrhovaná cena (€)</Label>
+              <Label htmlFor="basePrice">Základná cena (€)</Label>
               <Input
-                id="suggestedPrice"
-                name="suggestedPrice"
+                id="basePrice"
+                name="basePrice"
                 type="number"
                 step="0.01"
                 min={0}
-                defaultValue={state?.values?.suggestedPrice ?? product?.suggestedPrice}
+                defaultValue={state?.values?.basePrice ?? product?.basePrice}
               />
-              <FieldError messages={state?.errors?.suggestedPrice} />
+              <FieldError messages={state?.errors?.basePrice} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="kcal">Kalórie (kcal)</Label>

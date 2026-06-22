@@ -54,7 +54,7 @@ export default function SuppliersPage() {
 
         <div className="flex flex-col justify-center">
             <p className="text-4xl font-bold">
-               Naším cieľom nie je budovanie stabilnej siete partnerov, s
+               Naším cieľom je budovanie stabilnej siete partnerov, s
               ktorými budeme rásť.
             </p>
             <p className="text-xl mt-6">
@@ -115,7 +115,7 @@ export default function SuppliersPage() {
           </p>
           </div>
           <div className="mt-8 col-span-1">
-            <div className="rounded-xl border border-primary p-6 sm:p-8">
+            <div className="rounded-xl border-2 border-primary p-6 sm:p-8">
             <SupplierInquiryForm />
             </div>
           </div>

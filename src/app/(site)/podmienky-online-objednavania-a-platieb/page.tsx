@@ -269,7 +269,7 @@ export default function OnlineOrderingTermsPage() {
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-lg border-2 border-primary border-b-0">
+        <div className="overflow-hidden rounded-lg border-2 border-primary border-b-1">
           <Accordion type="single" collapsible className="w-full">
             {FAQ_ITEMS.map((item, index) => (
               <AccordionItem

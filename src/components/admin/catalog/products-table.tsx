@@ -125,7 +125,7 @@ function PriceButton({ product }: { product: ProductListItem }) {
       className="h-8 gap-1.5 tabular-nums"
       onClick={() => openPanel("product", product.id)}
     >
-      <span>{product.suggestedPrice ? `${product.suggestedPrice} €` : "Cena"}</span>
+      <span>{product.basePrice ? `${product.basePrice} €` : "Cena"}</span>
       <Pencil className="size-3.5 opacity-60" />
     </Button>
   );

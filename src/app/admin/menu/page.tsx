@@ -29,6 +29,8 @@ export default async function MenuPage() {
     isAvailable: m.isAvailable,
     imageUrl: m.product.imageUrl,
     productActive: m.product.isActive,
+    effectivePrice: m.effectivePrice,
+    customPrice: m.customPrice?.toString() ?? null,
   }));
 
   const products: MenuProductOption[] = available.map((p) => ({
@@ -53,7 +55,7 @@ export default async function MenuPage() {
           <MenuItemDialog storeId={store.id} products={products} />
         )}
       </div>
-      <MenuTable items={items} isSuperAdmin={isSuperAdmin} />
+      <MenuTable items={items} isSuperAdmin={isSuperAdmin} currency={store.currency} />
     </>
   );
 }

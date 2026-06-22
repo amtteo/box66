@@ -30,7 +30,7 @@ export type ProductFormValues = {
   name: string;
   slug: string;
   description: string;
-  suggestedPrice: string;
+  basePrice: string;
   sku: string;
   allergens: string[];
   kcal: string;
@@ -38,17 +38,26 @@ export type ProductFormValues = {
   sortOrder: number;
   isActive: boolean;
   isComboOption: boolean;
+  menuUpsellProductId: string | null;
   imageUrl: string | null;
 };
 
 export type CategoryOption = { id: string; name: string };
 
+export type MenuUpsellOption = {
+  id: string;
+  name: string;
+  categoryName: string;
+};
+
 export function ProductForm({
   product,
   categories,
+  menuUpsellOptions = [],
 }: {
   product?: ProductFormValues;
   categories: CategoryOption[];
+  menuUpsellOptions?: MenuUpsellOption[];
 }) {
   const isEdit = !!product;
   const router = useRouter();
@@ -107,16 +116,16 @@ export function ProductForm({
           <FieldError messages={state?.errors?.categoryId} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="suggestedPrice">Cena (€)</Label>
+          <Label htmlFor="basePrice">Základná cena (€)</Label>
           <Input
-            id="suggestedPrice"
-            name="suggestedPrice"
+            id="basePrice"
+            name="basePrice"
             type="number"
             step="0.01"
             min={0}
-            defaultValue={state?.values?.suggestedPrice ?? product?.suggestedPrice}
+            defaultValue={state?.values?.basePrice ?? product?.basePrice}
           />
-          <FieldError messages={state?.errors?.suggestedPrice} />
+          <FieldError messages={state?.errors?.basePrice} />
         </div>
         </div>
         <div className="space-y-2">
@@ -230,6 +239,34 @@ export function ProductForm({
           name="isComboOption"
           defaultChecked={product?.isComboOption ?? false}
         />
+      </div>
+
+      <div className="space-y-2 rounded-md border px-3 py-3">
+        <Label htmlFor="menuUpsellProductId">MENU upsell</Label>
+        <p className="text-xs text-muted-foreground">
+          Pri pridaní single produktu do košíka ponúknuť aj MENU verziu (s výberom nápoja).
+        </p>
+        <Select
+          name="menuUpsellProductId"
+          defaultValue={
+            state?.values?.menuUpsellProductId ??
+            product?.menuUpsellProductId ??
+            "__none__"
+          }
+        >
+          <SelectTrigger id="menuUpsellProductId" className="w-full">
+            <SelectValue placeholder="Bez upsellu" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">Bez upsellu</SelectItem>
+            {menuUpsellOptions.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {`${p.name} · ${p.categoryName}`}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <FieldError messages={state?.errors?.menuUpsellProductId} />
       </div>
 
       <div className="flex justify-end gap-2 border-t pt-4">

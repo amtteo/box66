@@ -1,20 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check } from "lucide-react";
+import Image from "next/image";
+import { ArrowLeft, Check, ImageIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { showCartAddedToast } from "@/components/storefront/cart-added-toast";
 import { useCart } from "@/components/storefront/cart-context";
-import { formatMoney, type CartChoice, type MenuItemDTO } from "@/lib/orders/types";
+import { cn } from "@/lib/utils";
+import { type CartChoice, type MenuChoiceOptionDTO, type MenuItemDTO } from "@/lib/orders/types";
 
 /**
  * Modal výberu pre kombo (napr. nápoj k menu). Otvorí sa pri pridávaní položky,
@@ -24,10 +25,12 @@ export function ComboChoiceDialog({
   item,
   currency,
   onClose,
+  onBack,
 }: {
   item: MenuItemDTO | null;
   currency: string;
   onClose: () => void;
+  onBack?: () => void;
 }) {
   const { add } = useCart();
   // Mapa groupId -> zoznam vybraných menuItemId.
@@ -92,12 +95,23 @@ export function ComboChoiceDialog({
 
   return (
     <Dialog open={!!item} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+      <DialogContent
+        className="max-h-[90vh] overflow-y-auto p-16 sm:max-w-4xl md:p-36"
+        circleCloseButton
+      >
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            className="absolute top-4 left-4 flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-foreground bg-background outline-none transition-colors hover:bg-accent focus:outline-none focus-visible:outline-none focus-visible:ring-0"
+          >
+            <ArrowLeft className="size-5" />
+            <span className="sr-only">Späť</span>
+          </button>
+        ) : null}
+
         <DialogHeader>
           <DialogTitle>{item?.name}</DialogTitle>
-          <DialogDescription>
-            {item ? formatMoney(item.price, currency) : ""} — dokonči svoj výber.
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">
@@ -133,14 +147,22 @@ export function ComboChoiceDialog({
                         type="button"
                         onClick={() => toggle(g.id, g.maxSelect, opt.menuItemId)}
                         aria-pressed={checked}
-                        className={`flex w-full items-center justify-between gap-3 rounded-lg border p-3 text-left transition ${
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-lg border-2 p-3 text-left transition",
                           checked
-                            ? "border-primary ring-1 ring-primary"
-                            : "hover:bg-accent"
-                        }`}
+                            ? "border-primary"
+                            : "border-zinc-200 hover:border-zinc-900",
+                        )}
                       >
-                        <span className="font-medium">{opt.name}</span>
-                        {checked && <Check className="size-4 text-primary" />}
+                        <ChoiceOptionThumb option={opt} />
+                        <span className="min-w-0 flex-1 text-xl font-semibold leading-tight">
+                          {opt.name}
+                        </span>
+                        {checked ? (
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-green-500">
+                            <Check className="size-4 text-white" strokeWidth={3} />
+                          </span>
+                        ) : null}
                       </button>
                     );
                   })}
@@ -151,18 +173,31 @@ export function ComboChoiceDialog({
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            type="button"
-            onClick={onClose}
-          >
-            Zrušiť
-          </Button>
-          <Button type="button" onClick={confirm} disabled={!allValid}>
+          <Button className="h-14 px-6 bg-yellow-400 text-black font-bold hover:bg-yellow-500 text-lg disabled:bg-zinc-200" type="button" onClick={confirm} disabled={!allValid}>
             Pridať do košíka
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ChoiceOptionThumb({ option }: { option: MenuChoiceOptionDTO }) {
+  return (
+    <div className="relative size-12 shrink-0 overflow-hidden rounded-md">
+      {option.imageUrl ? (
+        <Image
+          src={option.imageUrl}
+          alt={option.name}
+          fill
+          sizes="48px"
+          className="object-contain"
+        />
+      ) : (
+        <div className="flex size-full items-center justify-center">
+          <ImageIcon className="size-5 text-muted-foreground" aria-hidden />
+        </div>
+      )}
+    </div>
   );
 }
