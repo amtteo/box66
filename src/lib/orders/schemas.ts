@@ -102,6 +102,14 @@ export const CheckoutSchema = z.object({
     (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
     z.string().trim().min(5).max(500).optional(),
   ),
+  deliveryLat: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    z.coerce.number().finite().min(-90).max(90).optional(),
+  ),
+  deliveryLng: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    z.coerce.number().finite().min(-180).max(180).optional(),
+  ),
   items: z
     .array(CartItemSchema)
     .min(1, { error: "Košík je prázdny." })
@@ -112,6 +120,15 @@ export const CheckoutSchema = z.object({
       code: "custom",
       message: "Pre donášku zadaj adresu doručenia.",
       path: ["deliveryAddress"],
+    });
+  }
+  const hasLat = data.deliveryLat != null;
+  const hasLng = data.deliveryLng != null;
+  if (hasLat !== hasLng) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Súradnice doručenia musia byť zadané spolu.",
+      path: ["deliveryLat"],
     });
   }
 });

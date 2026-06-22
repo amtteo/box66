@@ -65,7 +65,8 @@ export function CartSheet({
 }) {
   const { lines, totalQuantity, subtotal, setQuantity, remove, clear } =
     useCart();
-  const { delivery, fulfillmentMode } = useStorefront();
+  const { delivery, deliveryCoords, fulfillmentMode, requestFulfillmentSetup } =
+    useStorefront();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<View>("cart");
@@ -118,6 +119,19 @@ export function CartSheet({
     fulfillmentMode === "delivery"
       ? delivery.fee == null || !!delivery.error
       : !delivery.quoteAttempted;
+  const needsFulfillmentSetup =
+    lines.length > 0 && checkoutBlocked && !delivery.pending;
+  const fulfillmentSetupLabel =
+    fulfillmentMode === "pickup"
+      ? "Doplniť lokalitu"
+      : delivery.error
+        ? "Upraviť adresu"
+        : "Doplniť adresu";
+
+  function handleRequestFulfillmentSetup() {
+    setOpen(false);
+    requestFulfillmentSetup();
+  }
 
   function handlePlaceOrder(formData: FormData) {
     setError(undefined);
@@ -132,6 +146,10 @@ export function CartSheet({
       note: formData.get("note"),
       deliveryAddress:
         orderType === OrderType.DELIVERY ? delivery.address : undefined,
+      deliveryLat:
+        orderType === OrderType.DELIVERY ? deliveryCoords?.lat : undefined,
+      deliveryLng:
+        orderType === OrderType.DELIVERY ? deliveryCoords?.lng : undefined,
       items: lines.map((l) => ({
         menuItemId: l.menuItemId,
         quantity: l.quantity,
@@ -395,17 +413,29 @@ export function CartSheet({
               )}
 
               {view === "cart" && (
-                <Button
-                  className="shrink-0 px-8"
-                  size="lg"
-                  disabled={lines.length === 0 || checkoutBlocked}
-                  onClick={() => {
-                    setError(undefined);
-                    setView("checkout");
-                  }}
-                >
-                  Pokračovať
-                </Button>
+                needsFulfillmentSetup ? (
+                  <Button
+                    className="shrink-0 px-8"
+                    size="lg"
+                    onClick={handleRequestFulfillmentSetup}
+                  >
+                    {fulfillmentSetupLabel}
+                  </Button>
+                ) : (
+                  <Button
+                    className="shrink-0 px-8"
+                    size="lg"
+                    disabled={lines.length === 0 || checkoutBlocked}
+                    onClick={() => {
+                      setError(undefined);
+                      setView("checkout");
+                    }}
+                  >
+                    {delivery.pending && lines.length > 0
+                      ? "Počítam cenu…"
+                      : "Pokračovať"}
+                  </Button>
+                )
               )}
 
               {view === "checkout" && (

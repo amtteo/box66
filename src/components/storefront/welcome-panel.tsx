@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import {
   ChevronDown,
   Clock,
@@ -12,7 +13,10 @@ import {
   DivideIcon,
 } from "lucide-react";
 
-import { DeliveryAddressInput } from "@/components/storefront/delivery-address-input";
+import {
+  DeliveryAddressInput,
+  type DeliveryAddressInputHandle,
+} from "@/components/storefront/delivery-address-input";
 import { DeliveryAddressHistoryDropdown } from "@/components/storefront/delivery-address-history-dropdown";
 import {
   useStorefront,
@@ -322,7 +326,14 @@ function PickupConfirmationDisplay({
   );
 }
 
-export function WelcomePanel({ isAuthed = false }: { isAuthed?: boolean }) {
+export function WelcomePanel({
+  isAuthed = false,
+  focusAddressRequest = 0,
+}: {
+  isAuthed?: boolean;
+  focusAddressRequest?: number;
+}) {
+  const addressInputRef = useRef<DeliveryAddressInputHandle>(null);
   const {
     currency,
     delivery,
@@ -349,6 +360,17 @@ export function WelcomePanel({ isAuthed = false }: { isAuthed?: boolean }) {
     delivery.fee != null ||
     delivery.pending;
 
+  useEffect(() => {
+    if (focusAddressRequest === 0) return;
+    const frame = requestAnimationFrame(() => {
+      document
+        .getElementById("delivery-address-section")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      addressInputRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusAddressRequest]);
+
   return (
     <div className="relative flex-1 md:border-r-2 md:border-primary">
       <div className="absolute left-3 top-3 z-10 flex max-w-[calc(100vw-1.5rem)] flex-wrap items-stretch gap-2 sm:left-4 sm:top-4">
@@ -366,9 +388,13 @@ export function WelcomePanel({ isAuthed = false }: { isAuthed?: boolean }) {
       </h2>
 
       <div className="space-y-3 p-4 sm:p-6">
-        <div className="mx-auto flex max-w-md flex-col">
+        <div
+          id="delivery-address-section"
+          className="mx-auto flex max-w-md flex-col scroll-mt-24"
+        >
           <div className="flex w-full items-stretch">
             <DeliveryAddressInput
+              ref={addressInputRef}
               className="bg-white"
               value={delivery.address}
               onChange={setDeliveryAddress}

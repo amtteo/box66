@@ -2,9 +2,11 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { formatStoreAddress } from "@/lib/delivery/address";
-import { getDrivingRoute } from "@/lib/delivery/google";
+import { getDrivingRoute, type RouteEndpoint } from "@/lib/delivery/google";
 import { getStoreDeliveryZones } from "@/lib/delivery/queries";
 import { resolveDeliveryFee } from "@/lib/delivery/zones";
+
+export type DeliveryCoords = { lat: number; lng: number };
 
 export type DeliveryComputation =
   | {
@@ -20,6 +22,7 @@ export type DeliveryComputation =
 export async function computeDeliveryForStore(
   storeId: string,
   deliveryAddress: string,
+  deliveryCoords?: DeliveryCoords | null,
 ): Promise<DeliveryComputation> {
   const store = await prisma.store.findFirst({
     where: { id: storeId, isActive: true },
@@ -30,13 +33,23 @@ export async function computeDeliveryForStore(
       city: true,
       postalCode: true,
       country: true,
+      latitude: true,
+      longitude: true,
     },
   });
   if (!store) {
     return { ok: false, message: "Predajňa nie je dostupná." };
   }
 
-  const origin = formatStoreAddress(store);
+  let origin: RouteEndpoint | null = null;
+  if (store.latitude != null && store.longitude != null) {
+    origin = {
+      lat: Number(store.latitude),
+      lng: Number(store.longitude),
+    };
+  } else {
+    origin = formatStoreAddress(store);
+  }
   if (!origin) {
     return {
       ok: false,
@@ -44,10 +57,15 @@ export async function computeDeliveryForStore(
     };
   }
 
+  const destination: RouteEndpoint =
+    deliveryCoords != null
+      ? deliveryCoords
+      : deliveryAddress.trim();
+
   let distanceKm: number;
   let durationMinutes: number;
   try {
-    const route = await getDrivingRoute(origin, deliveryAddress);
+    const route = await getDrivingRoute(origin, destination);
     distanceKm = route.distanceKm;
     durationMinutes = route.durationMinutes;
   } catch (err) {

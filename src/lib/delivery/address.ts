@@ -1,4 +1,4 @@
-/** Zloží jednoriadkovú adresu predajne pre Google Distance Matrix. */
+/** Zloží jednoriadkovú adresu predajne (fallback ak chýbajú súradnice). */
 export function formatStoreAddress(store: {
   street?: string | null;
   city?: string | null;

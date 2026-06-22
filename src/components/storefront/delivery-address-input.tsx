@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { MapPin, X } from "lucide-react";
 
 import { importPlacesLibrary } from "@/lib/google-maps/loader";
@@ -45,16 +52,40 @@ type Props = {
   attachedPicker?: boolean;
 };
 
-export function DeliveryAddressInput({
-  value,
-  onChange,
-  onClear,
-  onPlaceSelect,
-  disabled,
-  className,
-  showClear: showClearProp,
-  attachedPicker,
-}: Props) {
+export type DeliveryAddressInputHandle = {
+  focus: () => void;
+};
+
+function focusWidgetInput(host: HTMLDivElement | null): void {
+  if (!host) return;
+  const direct = host.querySelector("input");
+  if (direct instanceof HTMLInputElement) {
+    direct.focus();
+    return;
+  }
+  const autocomplete = host.querySelector("gmp-place-autocomplete");
+  const shadowInput = autocomplete?.shadowRoot?.querySelector("input");
+  if (shadowInput instanceof HTMLInputElement) {
+    shadowInput.focus();
+  }
+}
+
+export const DeliveryAddressInput = forwardRef<
+  DeliveryAddressInputHandle,
+  Props
+>(function DeliveryAddressInput(
+  {
+    value,
+    onChange,
+    onClear,
+    onPlaceSelect,
+    disabled,
+    className,
+    showClear: showClearProp,
+    attachedPicker,
+  },
+  ref,
+) {
   const widgetHostRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<google.maps.places.PlaceAutocompleteElement | null>(
     null,
@@ -62,6 +93,10 @@ export function DeliveryAddressInput({
   const valueRef = useRef(value);
   valueRef.current = value;
   const [widgetReady, setWidgetReady] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => focusWidgetInput(widgetHostRef.current),
+  }));
 
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +131,6 @@ export function DeliveryAddressInput({
 
           const { lat, lng } = readLatLng(location);
           widget.value = address;
-          onChange(address);
           onPlaceSelect({ address, lat, lng });
         };
 
@@ -175,4 +209,4 @@ export function DeliveryAddressInput({
       </div>
     </div>
   );
-}
+});

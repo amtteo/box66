@@ -21,8 +21,10 @@ import {
 import { showCartAddedToast } from "@/components/storefront/cart-added-toast";
 import { useCart } from "@/components/storefront/cart-context";
 import { ComboChoiceDialog } from "@/components/storefront/combo-choice-dialog";
+import { HeroSlider } from "@/components/storefront/hero-slider";
 import { MenuUpsellDialog } from "@/components/storefront/menu-upsell-dialog";
 import { WelcomePanel } from "@/components/storefront/welcome-panel";
+import { useStorefront } from "@/components/storefront/storefront-context";
 
 export const WELCOME_CATEGORY_ID = "__welcome__";
 
@@ -148,6 +150,7 @@ export function MenuBoard({
   loading?: boolean;
   isAuthed?: boolean;
 }) {
+  const { fulfillmentSetupRequest } = useStorefront();
   const displayCategories = showWelcome
     ? [WELCOME_CATEGORY, ...categories]
     : categories;
@@ -157,6 +160,7 @@ export function MenuBoard({
   const [upsellReturnItem, setUpsellReturnItem] = useState<MenuItemDTO | null>(
     null,
   );
+  const [heroVisible, setHeroVisible] = useState(true);
   const [activeId, setActiveId] = useState(displayCategories[0]?.id ?? "");
   const mobileTabRefs = useRef(new Map<string, HTMLButtonElement>());
 
@@ -172,6 +176,12 @@ export function MenuBoard({
       inline: "center",
     });
   }, [activeId]);
+
+  useEffect(() => {
+    if (fulfillmentSetupRequest === 0) return;
+    setHeroVisible(false);
+    setActiveId(WELCOME_CATEGORY_ID);
+  }, [fulfillmentSetupRequest]);
 
   function handleAdd(item: MenuItemDTO) {
     if (item.choiceGroups.length > 0) {
@@ -192,6 +202,14 @@ export function MenuBoard({
         <div className="rounded-lg border border-dashed p-10 text-center text-muted-foreground">
           Menu zatiaľ nie je dostupné. Skúste to neskôr.
         </div>
+      </div>
+    );
+  }
+
+  if (heroVisible) {
+    return (
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
+        <HeroSlider onOrder={() => setHeroVisible(false)} />
       </div>
     );
   }
@@ -238,7 +256,10 @@ export function MenuBoard({
 
           <div className="min-w-0 flex flex-col flex-1">
             {isWelcomeActive ? (
-              <WelcomePanel isAuthed={isAuthed} />
+              <WelcomePanel
+                isAuthed={isAuthed}
+                focusAddressRequest={fulfillmentSetupRequest}
+              />
             ) : activeCategory ? (
               <section className="space-y-5">
                 {loading ? (

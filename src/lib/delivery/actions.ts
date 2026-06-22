@@ -9,6 +9,7 @@ import { authorizeStore } from "@/lib/auth/tenancy";
 import { computeDeliveryForStore } from "@/lib/delivery/compute";
 import { geocodeDeliveryAddress } from "@/lib/delivery/geocode";
 import { getCustomerCompletedDeliveryAddresses } from "@/lib/delivery/queries";
+import type { CustomerDeliveryAddress } from "@/lib/delivery/queries";
 import {
   CalculateDeliverySchema,
   DeliveryZonesFormSchema,
@@ -25,7 +26,7 @@ export type CalculateDeliveryResult =
     }
   | { ok: false; message: string };
 
-/** Vypočíta cenu donášky pre zvolenú predajňu a adresu (server-side, Distance Matrix). */
+/** Vypočíta cenu donášky pre zvolenú predajňu a adresu (server-side, Routes API). */
 export async function calculateDeliveryFee(
   input: unknown,
 ): Promise<CalculateDeliveryResult> {
@@ -38,12 +39,18 @@ export async function calculateDeliveryFee(
     };
   }
 
-  const { storeId, deliveryAddress } = parsed.data;
-  return computeDeliveryForStore(storeId, deliveryAddress);
+  const { storeId, deliveryAddress, deliveryLat, deliveryLng } = parsed.data;
+  const deliveryCoords =
+    deliveryLat != null && deliveryLng != null
+      ? { lat: deliveryLat, lng: deliveryLng }
+      : null;
+  return computeDeliveryForStore(storeId, deliveryAddress, deliveryCoords);
 }
 
+export type { CustomerDeliveryAddress } from "@/lib/delivery/queries";
+
 export type DeliveryAddressHistoryResult =
-  | { ok: true; orderAddresses: string[] }
+  | { ok: true; orderAddresses: CustomerDeliveryAddress[] }
   | { ok: false; message: string };
 
 /** Adresy z dokončených donášok prihláseného zákazníka (max 3). */

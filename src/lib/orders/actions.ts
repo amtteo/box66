@@ -269,6 +269,8 @@ export async function placeOrder(
   let deliveryDistanceKm: number | null = null;
   let deliveryDurationMinutes: number | null = null;
   let deliveryAddress: string | null = null;
+  let deliveryLatitude: number | null = null;
+  let deliveryLongitude: number | null = null;
 
   if (data.type === OrderType.DELIVERY) {
     if (!data.deliveryAddress) {
@@ -278,7 +280,15 @@ export async function placeOrder(
         fieldErrors: { deliveryAddress: ["Zadaj adresu doručenia."] },
       };
     }
-    const delivery = await computeDeliveryForStore(store.id, data.deliveryAddress);
+    const deliveryCoords =
+      data.deliveryLat != null && data.deliveryLng != null
+        ? { lat: data.deliveryLat, lng: data.deliveryLng }
+        : null;
+    const delivery = await computeDeliveryForStore(
+      store.id,
+      data.deliveryAddress,
+      deliveryCoords,
+    );
     if (!delivery.ok) {
       return { ok: false, message: delivery.message };
     }
@@ -286,6 +296,8 @@ export async function placeOrder(
     deliveryDistanceKm = delivery.distanceKm;
     deliveryDurationMinutes = estimatedDeliveryMinutes(delivery.durationMinutes);
     deliveryAddress = data.deliveryAddress;
+    deliveryLatitude = deliveryCoords?.lat ?? null;
+    deliveryLongitude = deliveryCoords?.lng ?? null;
   }
 
   const total = round2(subtotal + deliveryFee);
@@ -320,6 +332,8 @@ export async function placeOrder(
             total,
             currency: store.currency,
             deliveryAddress,
+            deliveryLatitude,
+            deliveryLongitude,
             deliveryDistanceKm,
             deliveryDurationMinutes,
             customerName: data.customerName ?? null,

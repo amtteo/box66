@@ -528,6 +528,8 @@ model Order {
   total              Decimal  @default(0) @db.Decimal(10, 2)
   currency           String   @default("EUR")
   deliveryAddress    String?
+  deliveryLatitude   Decimal? @db.Decimal(10, 7)
+  deliveryLongitude  Decimal? @db.Decimal(10, 7)
   deliveryDistanceKm Decimal? @db.Decimal(6, 2)
   deliveryDurationMinutes Int?
 

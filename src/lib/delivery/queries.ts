@@ -105,11 +105,17 @@ export type DeliveryZoneListItem = Awaited<
   ReturnType<typeof getStoreDeliveryZones>
 >[number];
 
+export type CustomerDeliveryAddress = {
+  address: string;
+  lat: number | null;
+  lng: number | null;
+};
+
 /** Posledné unikátne adresy doručenia z dokončených objednávok zákazníka. */
 export async function getCustomerCompletedDeliveryAddresses(
   customerId: string,
   limit = 3,
-): Promise<string[]> {
+): Promise<CustomerDeliveryAddress[]> {
   const orders = await prisma.order.findMany({
     where: {
       customerId,
@@ -118,12 +124,16 @@ export async function getCustomerCompletedDeliveryAddresses(
       deliveryAddress: { not: null },
     },
     orderBy: { completedAt: "desc" },
-    select: { deliveryAddress: true },
+    select: {
+      deliveryAddress: true,
+      deliveryLatitude: true,
+      deliveryLongitude: true,
+    },
     take: 20,
   });
 
   const seen = new Set<string>();
-  const addresses: string[] = [];
+  const addresses: CustomerDeliveryAddress[] = [];
 
   for (const order of orders) {
     const addr = order.deliveryAddress?.trim();
@@ -131,7 +141,17 @@ export async function getCustomerCompletedDeliveryAddresses(
     const key = addr.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    addresses.push(addr);
+    addresses.push({
+      address: addr,
+      lat:
+        order.deliveryLatitude != null
+          ? Number(order.deliveryLatitude)
+          : null,
+      lng:
+        order.deliveryLongitude != null
+          ? Number(order.deliveryLongitude)
+          : null,
+    });
     if (addresses.length >= limit) break;
   }
 

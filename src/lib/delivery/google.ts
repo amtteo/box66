@@ -15,6 +15,10 @@ export type DrivingRouteResult = {
   durationMinutes: number;
 };
 
+export type RouteLatLng = { lat: number; lng: number };
+
+export type RouteEndpoint = string | RouteLatLng;
+
 /** Protobuf Duration z Routes API, napr. "1234s". */
 function parseDurationToMinutes(duration: string): number {
   const match = /^(\d+(?:\.\d+)?)s$/.exec(duration.trim());
@@ -24,14 +28,27 @@ function parseDurationToMinutes(duration: string): number {
   return Math.max(1, Math.ceil(Number(match[1]) / 60));
 }
 
+function toRouteWaypoint(endpoint: RouteEndpoint) {
+  if (typeof endpoint === "string") {
+    return { address: endpoint };
+  }
+  return {
+    location: {
+      latLng: {
+        latitude: endpoint.lat,
+        longitude: endpoint.lng,
+      },
+    },
+  };
+}
+
 /**
- * Vzdialenosť a čas jazdy autom cez Google Routes API (computeRoutes).
- * Nahradzuje legacy Distance Matrix API.
+ * Vzdialenosť a čas jazdy autom cez Google Routes API (`computeRoutes`).
  * Vyžaduje GOOGLE_MAPS_API_KEY a zapnuté Routes API v Google Cloud.
  */
 export async function getDrivingRoute(
-  origin: string,
-  destination: string,
+  origin: RouteEndpoint,
+  destination: RouteEndpoint,
 ): Promise<DrivingRouteResult> {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) {
@@ -48,8 +65,8 @@ export async function getDrivingRoute(
         "X-Goog-FieldMask": "routes.duration,routes.distanceMeters",
       },
       body: JSON.stringify({
-        origin: { address: origin },
-        destination: { address: destination },
+        origin: toRouteWaypoint(origin),
+        destination: toRouteWaypoint(destination),
         travelMode: "DRIVE",
         routingPreference: "TRAFFIC_AWARE",
         languageCode: "sk",
@@ -72,7 +89,11 @@ export async function getDrivingRoute(
   }
 
   const route = data.routes?.[0];
-  if (!route?.distanceMeters || !route.duration) {
+  if (
+    route?.distanceMeters == null ||
+    route.distanceMeters < 0 ||
+    !route.duration
+  ) {
     throw new Error("Nepodarilo sa vypočítať trasu k adrese.");
   }
 

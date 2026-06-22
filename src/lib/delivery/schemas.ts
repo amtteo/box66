@@ -33,13 +33,27 @@ export const DeliveryZonesFormSchema = z
     }
   });
 
-export const CalculateDeliverySchema = z.object({
-  storeId: z.uuid(),
-  deliveryAddress: z
-    .string()
-    .trim()
-    .min(5, { error: "Zadaj platnú adresu doručenia." })
-    .max(500),
-});
+export const CalculateDeliverySchema = z
+  .object({
+    storeId: z.uuid(),
+    deliveryAddress: z
+      .string()
+      .trim()
+      .min(5, { error: "Zadaj platnú adresu doručenia." })
+      .max(500),
+    deliveryLat: z.number().finite().min(-90).max(90).optional(),
+    deliveryLng: z.number().finite().min(-180).max(180).optional(),
+  })
+  .superRefine((data, ctx) => {
+    const hasLat = data.deliveryLat != null;
+    const hasLng = data.deliveryLng != null;
+    if (hasLat !== hasLng) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Súradnice doručenia musia byť zadané spolu.",
+        path: ["deliveryLat"],
+      });
+    }
+  });
 
 export type DeliveryZoneInput = z.infer<typeof DeliveryZoneInputSchema>;

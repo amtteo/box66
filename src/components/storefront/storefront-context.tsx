@@ -56,6 +56,8 @@ type StorefrontContextValue = {
   menuLoading: boolean;
   setStoreId: (id: string) => void;
   delivery: DeliveryState;
+  /** Súradnice potvrdenej adresy doručenia (z Google alebo histórie). */
+  deliveryCoords: { lat: number; lng: number } | null;
   setDeliveryAddress: (address: string) => void;
   /** Vymaže adresu, cenu donášky, predajne v okolí a localStorage. */
   resetDelivery: () => void;
@@ -72,6 +74,9 @@ type StorefrontContextValue = {
   refreshDeliveryFee: () => void;
   fulfillmentMode: FulfillmentMode;
   setFulfillmentMode: (mode: FulfillmentMode) => void;
+  /** Inkrementuje sa pri požiadavke z košíka — prepne na Odber a zameria pole adresy. */
+  fulfillmentSetupRequest: number;
+  requestFulfillmentSetup: () => void;
 };
 
 const StorefrontContext = createContext<StorefrontContextValue | null>(null);
@@ -126,9 +131,14 @@ export function StorefrontProvider({
   const [categories, setCategories] = useState(initialCategories);
   const [menuLoading, setMenuLoading] = useState(false);
   const [deliveryAddress, setDeliveryAddressState] = useState("");
+  const [deliveryCoords, setDeliveryCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [nearbyStores, setNearbyStores] = useState<RankedStore[]>([]);
   const [fulfillmentMode, setFulfillmentModeState] =
     useState<FulfillmentMode>("delivery");
+  const [fulfillmentSetupRequest, setFulfillmentSetupRequest] = useState(0);
   const [delivery, setDelivery] = useState<DeliveryState>({
     address: "",
     distanceKm: null,
@@ -143,6 +153,7 @@ export function StorefrontProvider({
 
   const feeCacheRef = useRef(new Map<string, FeeQuote>());
   const feeAddressRef = useRef("");
+  const feeRequestIdRef = useRef(0);
 
   const clearFeeCache = useCallback(() => {
     feeCacheRef.current.clear();
@@ -181,9 +192,13 @@ export function StorefrontProvider({
     (
       address: string,
       activeStoreId: string,
-      options?: { notify?: boolean },
+      options?: {
+        notify?: boolean;
+        coords?: { lat: number; lng: number } | null;
+      },
     ) => {
       const notify = options?.notify ?? true;
+      const coords = options?.coords ?? readDeliveryCoords();
 
       if (!address.trim()) {
         clearFeeCache();
@@ -210,6 +225,8 @@ export function StorefrontProvider({
         return;
       }
 
+      const requestId = ++feeRequestIdRef.current;
+
       startFeeTransition(async () => {
         setDelivery((d) => ({
           ...d,
@@ -221,7 +238,13 @@ export function StorefrontProvider({
         const res = await calculateDeliveryFee({
           storeId: activeStoreId,
           deliveryAddress: address,
+          ...(coords
+            ? { deliveryLat: coords.lat, deliveryLng: coords.lng }
+            : {}),
         });
+        if (requestId !== feeRequestIdRef.current) return;
+        if (feeAddressRef.current !== address) return;
+
         if (res.ok) {
           const quote: FeeQuote = {
             distanceKm: res.distanceKm,
@@ -287,6 +310,7 @@ export function StorefrontProvider({
     const coords = readDeliveryCoords();
 
     if (coords) {
+      setDeliveryCoords(coords);
       setNearbyStores(rankStoresByProximity(stores, coords.lat, coords.lng, 3));
     }
 
@@ -299,7 +323,10 @@ export function StorefrontProvider({
       }));
       if (wasConfirmed && savedMode !== "pickup") {
         feeAddressRef.current = savedAddress;
-        runFeeCalculation(savedAddress, activeStoreId, { notify: false });
+        runFeeCalculation(savedAddress, activeStoreId, {
+          notify: false,
+          coords,
+        });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- jednorazová hydratácia
@@ -320,6 +347,7 @@ export function StorefrontProvider({
 
   const resetDelivery = useCallback(() => {
     setDeliveryAddressState("");
+    setDeliveryCoords(null);
     writeStorage(ADDRESS_KEY, "");
     removeStorage(ADDRESS_CONFIRMED_KEY);
     removeStorage(DELIVERY_LAT_KEY);
@@ -344,6 +372,7 @@ export function StorefrontProvider({
         return;
       }
       setDeliveryAddressState(address);
+      setDeliveryCoords(null);
       writeStorage(ADDRESS_KEY, address);
       if (readStorage(ADDRESS_CONFIRMED_KEY) === "1") {
         removeStorage(ADDRESS_CONFIRMED_KEY);
@@ -368,7 +397,9 @@ export function StorefrontProvider({
 
   const applyPickupLocation = useCallback(
     (place: { address: string; lat: number; lng: number }) => {
+      const coords = { lat: place.lat, lng: place.lng };
       setDeliveryAddressState(place.address);
+      setDeliveryCoords(coords);
       writeStorage(ADDRESS_KEY, place.address);
       writeStorage(DELIVERY_LAT_KEY, String(place.lat));
       writeStorage(DELIVERY_LNG_KEY, String(place.lng));
@@ -398,7 +429,9 @@ export function StorefrontProvider({
 
   const applyDeliverySelection = useCallback(
     (place: { address: string; lat: number; lng: number }) => {
+      const coords = { lat: place.lat, lng: place.lng };
       setDeliveryAddressState(place.address);
+      setDeliveryCoords(coords);
       writeStorage(ADDRESS_KEY, place.address);
       writeStorage(DELIVERY_LAT_KEY, String(place.lat));
       writeStorage(DELIVERY_LNG_KEY, String(place.lng));
@@ -411,7 +444,17 @@ export function StorefrontProvider({
       if (bestStoreId !== storeId) {
         switchStore(bestStoreId);
       }
-      runFeeCalculation(place.address, bestStoreId);
+      setDelivery((d) => ({
+        ...d,
+        address: place.address,
+        error: null,
+        fee: null,
+        distanceKm: null,
+        durationMinutes: null,
+        pending: false,
+        quoteAttempted: false,
+      }));
+      runFeeCalculation(place.address, bestStoreId, { coords });
     },
     [stores, storeId, switchStore, clearFeeCache, runFeeCalculation],
   );
@@ -464,12 +507,23 @@ export function StorefrontProvider({
         const geo = await resolveDeliveryAddressCoords(trimmed);
         if (!geo.ok) {
           setDeliveryAddressState(trimmed);
+          setDeliveryCoords(null);
           writeStorage(ADDRESS_KEY, trimmed);
           removeStorage(DELIVERY_LAT_KEY);
           removeStorage(DELIVERY_LNG_KEY);
+          removeStorage(ADDRESS_CONFIRMED_KEY);
           setNearbyStores([]);
           clearFeeCache();
-          runFeeCalculation(trimmed, storeId);
+          setDelivery({
+            address: trimmed,
+            distanceKm: null,
+            durationMinutes: null,
+            fee: null,
+            error:
+              "Adresu sa nepodarilo overiť. Vyber ju znovu z návrhov Google.",
+            pending: false,
+            quoteAttempted: true,
+          });
           return;
         }
         lat = geo.lat;
@@ -479,12 +533,9 @@ export function StorefrontProvider({
       applyDeliverySelection({ address: trimmed, lat, lng });
     },
     [
-      storeId,
       fulfillmentMode,
       applyPickupLocation,
       applyDeliverySelection,
-      clearFeeCache,
-      runFeeCalculation,
     ],
   );
 
@@ -525,6 +576,10 @@ export function StorefrontProvider({
     }
   }, [deliveryAddress, storeId, runFeeCalculation]);
 
+  const requestFulfillmentSetup = useCallback(() => {
+    setFulfillmentSetupRequest((n) => n + 1);
+  }, []);
+
   const value = useMemo<StorefrontContextValue>(
     () => ({
       stores,
@@ -538,6 +593,7 @@ export function StorefrontProvider({
         ...delivery,
         pending: delivery.pending || feePending,
       },
+      deliveryCoords,
       setDeliveryAddress,
       resetDelivery,
       onDeliveryPlaceSelected,
@@ -545,6 +601,8 @@ export function StorefrontProvider({
       refreshDeliveryFee,
       fulfillmentMode,
       setFulfillmentMode,
+      fulfillmentSetupRequest,
+      requestFulfillmentSetup,
     }),
     [
       stores,
@@ -556,6 +614,7 @@ export function StorefrontProvider({
       menuPending,
       setStoreId,
       delivery,
+      deliveryCoords,
       feePending,
       setDeliveryAddress,
       resetDelivery,
@@ -564,6 +623,8 @@ export function StorefrontProvider({
       refreshDeliveryFee,
       fulfillmentMode,
       setFulfillmentMode,
+      fulfillmentSetupRequest,
+      requestFulfillmentSetup,
     ],
   );
 

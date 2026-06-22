@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Bike, ChevronDown, History } from "lucide-react";
 
 import { fetchDeliveryAddressHistory } from "@/lib/delivery/actions";
+import type { CustomerDeliveryAddress } from "@/lib/delivery/queries";
 import {
   getDeliverySearchHistory,
   type DeliverySearchHistoryEntry,
@@ -33,7 +34,9 @@ export function DeliveryAddressHistoryDropdown({
   disabled,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const [orderAddresses, setOrderAddresses] = useState<string[]>([]);
+  const [orderAddresses, setOrderAddresses] = useState<CustomerDeliveryAddress[]>(
+    [],
+  );
   const [searchHistory, setSearchHistory] = useState<DeliverySearchHistoryEntry[]>(
     [],
   );
@@ -105,16 +108,23 @@ export function DeliveryAddressHistoryDropdown({
             <DropdownMenuLabel className="text-xs uppercase tracking-wide text-muted-foreground">
               Doručené objednávky
             </DropdownMenuLabel>
-            {orderAddresses.map((address) => (
+            {orderAddresses.map((entry) => (
               <DropdownMenuItem
-                key={`order:${address}`}
+                key={`order:${entry.address}`}
                 className="cursor-pointer gap-3 py-2.5"
                 onSelect={() => {
-                  void onPick(address);
+                  void onPick(
+                    entry.address,
+                    entry.lat != null && entry.lng != null
+                      ? { lat: entry.lat, lng: entry.lng }
+                      : undefined,
+                  );
                 }}
               >
                 <Bike className="size-4 shrink-0 text-primary" />
-                <span className="line-clamp-2 text-sm leading-snug">{address}</span>
+                <span className="line-clamp-2 text-sm leading-snug">
+                  {entry.address}
+                </span>
               </DropdownMenuItem>
             ))}
           </>
