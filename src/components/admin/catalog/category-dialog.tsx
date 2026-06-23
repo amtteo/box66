@@ -141,6 +141,21 @@ export function CategoryDialog({
 
           <div className="flex items-center justify-between rounded-md border px-3 py-2">
             <div>
+              <Label htmlFor="showInStorefront">Nákupné menu (objednávka)</Label>
+              <p className="text-xs text-muted-foreground">
+                Vypni pre kategórie iba na odmeny (napr. MERCH). Na prezentačnom
+                menu zostanú viditeľné.
+              </p>
+            </div>
+            <Switch
+              id="showInStorefront"
+              name="showInStorefront"
+              defaultChecked={category?.showInStorefront ?? true}
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-md border px-3 py-2">
+            <div>
               <Label htmlFor="isChoicePool">Pool výberu (kombo)</Label>
               <p className="text-xs text-muted-foreground">
                 {`Z tejto kategórie sa dá vyberať v kombe (napr. „Nápoje k menu“).`}

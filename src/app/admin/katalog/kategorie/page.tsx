@@ -32,6 +32,7 @@ export default async function KategoriePage({ searchParams }: PageProps) {
     sortOrder: c.sortOrder,
     isActive: c.isActive,
     isChoicePool: c.isChoicePool,
+    showInStorefront: c.showInStorefront,
     imageUrl: c.imageUrl,
     productCount: c._count.products,
   }));

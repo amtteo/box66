@@ -79,6 +79,11 @@ export function CategoriesTable({
                   {category.isChoicePool ? (
                     <span className="text-xs text-muted-foreground">Pool výberu</span>
                   ) : null}
+                  {!category.showInStorefront ? (
+                    <span className="text-xs text-muted-foreground">
+                      Iba odmeny / prezentácia
+                    </span>
+                  ) : null}
                 </div>
               </TableCell>
               <TableCell className="text-right tabular-nums">

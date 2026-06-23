@@ -126,6 +126,7 @@ export async function placeOrder(
         select: {
           name: true,
           basePrice: true,
+          category: { select: { showInStorefront: true } },
           choiceGroups: {
             select: {
               id: true,
@@ -208,6 +209,13 @@ export async function placeOrder(
         ok: false,
         message:
           "Niektoré položky už nie sú dostupné. Obnov stránku a skús to znova.",
+      };
+    }
+    if (!mi.product.category.showInStorefront) {
+      return {
+        ok: false,
+        message:
+          "Táto položka nie je dostupná na priamy nákup. Obnov stránku a skús to znova.",
       };
     }
 

@@ -260,6 +260,8 @@ model Category {
   /// Označuje kategóriu ako „pool" pre výber v kombe (napr. „Nápoje k menu").
   /// Z takejto kategórie sa dajú definovať skupiny výberu na kombo produktoch.
   isChoicePool Boolean @default(false)
+  /// Zobrazovať v nákupnom menu na hlavnej stránke (objednávka). Vypnuté = napr. MERCH iba cez odmeny.
+  showInStorefront Boolean @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

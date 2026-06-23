@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 const HERO_SLIDES = [
   { mobile: "/slide1mobile.webp", desktop: "/slider1.webp" },
   { mobile: "/slide2mobile.webp", desktop: "/slider2.webp" },
+  { mobile: "/slide3mobile.webp", desktop: "/slider3.webp" },
 ] as const;
 
 const SLIDE_INTERVAL_MS = 5000;

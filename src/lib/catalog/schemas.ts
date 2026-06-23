@@ -106,6 +106,7 @@ export const CategorySchema = z.object({
   sortOrder,
   isActive: checkbox,
   isChoicePool: checkbox,
+  showInStorefront: checkbox,
 });
 
 export const ProductSchema = z.object({

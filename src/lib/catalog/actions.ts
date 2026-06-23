@@ -37,6 +37,7 @@ export async function saveCategory(
     sortOrder: formData.get("sortOrder"),
     isActive: formData.get("isActive"),
     isChoicePool: formData.get("isChoicePool"),
+    showInStorefront: formData.get("showInStorefront"),
   });
 
   if (!parsed.success) {
@@ -48,7 +49,8 @@ export async function saveCategory(
     return { ok: false, message: image.error, values: rawValues(formData) };
   }
 
-  const { name, description, sortOrder, isActive, isChoicePool } = parsed.data;
+  const { name, description, sortOrder, isActive, isChoicePool, showInStorefront } =
+    parsed.data;
   const slug = await uniqueSlug(parsed.data.slug ?? slugify(name), async (c) => {
     const found = await prisma.category.findUnique({
       where: { slug: c },
@@ -66,6 +68,7 @@ export async function saveCategory(
       sortOrder,
       isActive,
       isChoicePool,
+      showInStorefront,
     };
     if (id) {
       await prisma.category.update({ where: { id }, data });
