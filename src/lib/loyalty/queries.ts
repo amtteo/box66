@@ -58,7 +58,13 @@ export async function getLoyaltyRewards() {
           imageUrl: true,
           isActive: true,
           category: { select: { name: true } },
-          _count: { select: { choiceGroups: true } },
+          choiceGroups: {
+            orderBy: [{ sortOrder: "asc" }],
+            select: {
+              label: true,
+              category: { select: { name: true } },
+            },
+          },
         },
       },
     },

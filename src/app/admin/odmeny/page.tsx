@@ -23,7 +23,7 @@ export default async function OdmenyPage() {
 
   const items: RewardListItem[] = rewards.map((r) => ({
     id: r.id,
-    productId: r.productId,
+    productId: r.product.id,
     pointsCost: r.pointsCost,
     sortOrder: r.sortOrder,
     isActive: r.isActive,
@@ -31,6 +31,10 @@ export default async function OdmenyPage() {
     categoryName: r.product.category.name,
     imageUrl: r.product.imageUrl,
     productActive: r.product.isActive,
+    choiceGroups: r.product.choiceGroups.map((g) => ({
+      label: g.label,
+      poolName: g.category.name,
+    })),
   }));
 
   const products = productOptions.map((p) => ({
@@ -43,9 +47,9 @@ export default async function OdmenyPage() {
   const productsForDialogs = [
     ...products,
     ...rewards
-      .filter((r) => !products.some((p) => p.id === r.productId))
+      .filter((r) => !products.some((p) => p.id === r.product.id))
       .map((r) => ({
-        id: r.productId,
+        id: r.product.id,
         name: r.product.name,
         categoryName: r.product.category.name,
       })),
@@ -57,8 +61,10 @@ export default async function OdmenyPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Odmeny</h1>
           <p className="text-sm text-muted-foreground">
-            Vernostný program — produkty z katalógu vymeniteľné za body. Zobrazených
-            je max. 9 odmen v košíku (zoradené podľa poradia).
+            Vernostný program — produkty z katalógu vymeniteľné za body. Veľkosť
+            (S/M/L) sa nenastavuje na kategórii ani v Odmenách — prepojíš ju na
+            konkrétnom produkte v Katalóg → Produkty → Receptúra → Výber pri
+            objednávke.
           </p>
         </div>
         <RewardDialog products={products} />

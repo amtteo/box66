@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { ImageIcon, Pencil } from "lucide-react";
 import { useTransition } from "react";
 import { toast } from "sonner";
@@ -29,6 +30,8 @@ export type RewardListItem = RewardFormValues & {
   categoryName: string;
   imageUrl: string | null;
   productActive: boolean;
+  /** Skupiny výberu na produkte-odmene (napr. veľkosť). 0 = košík nebude pýtať veľkosť. */
+  choiceGroups: { label: string; poolName: string }[];
 };
 
 export function RewardsTable({
@@ -66,6 +69,7 @@ export function RewardsTable({
           <TableRow>
             <TableHead className="w-14" />
             <TableHead>Produkt</TableHead>
+            <TableHead>Výber (veľkosť)</TableHead>
             <TableHead className="text-right">Body</TableHead>
             <TableHead className="text-right">Poradie</TableHead>
             <TableHead className="text-center">Aktívna</TableHead>
@@ -102,6 +106,37 @@ export function RewardsTable({
                     </Badge>
                   )}
                 </div>
+              </TableCell>
+              <TableCell>
+                {r.choiceGroups.length === 0 ? (
+                  <div className="space-y-1 text-xs">
+                    <Badge variant="outline" className="text-amber-700">
+                      Bez výberu
+                    </Badge>
+                    <p className="text-muted-foreground">
+                      Košík <strong>nepýta</strong> veľkosť. Nastav na{" "}
+                      <Link
+                        href={`/admin/katalog/produkty?panel=recipe&item=${r.productId}`}
+                        className="underline"
+                      >
+                        produkte → Výber pri objednávke
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                ) : (
+                  <ul className="space-y-0.5 text-xs">
+                    {r.choiceGroups.map((g) => (
+                      <li key={`${g.label}-${g.poolName}`}>
+                        <span className="font-medium">{g.label}</span>
+                        <span className="text-muted-foreground">
+                          {" "}
+                          → pool „{g.poolName}"
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </TableCell>
               <TableCell className="text-right tabular-nums font-semibold">
                 {r.pointsCost}
