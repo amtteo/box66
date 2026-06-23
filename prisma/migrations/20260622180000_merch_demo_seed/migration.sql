@@ -1,4 +1,4 @@
--- Vzorový MERCH: Black Tee s výberom veľkosti cez pool kategóriu.
+-- Vzorový MERCH: Tričko Hranolky s výberom veľkosti cez pool kategóriu.
 -- Idempotentné podľa slug / unikátnych kľúčov.
 
 -- Kategórie
@@ -20,9 +20,9 @@ INSERT INTO "categories" (
   ),
   (
     'a0000001-0002-4001-8001-000000000002',
-    'Veľkosti — Black Tee (pool)',
-    'merch-velkosti-black-tee',
-    'Skrytý pool veľkostí pre demo tričko.',
+    'Veľkosti Tričko Hranolky',
+    'merch-velkosti-tricko-hranolky',
+    'Skrytý pool veľkostí pre tričko Hranolky.',
     901,
     true,
     true,
@@ -36,10 +36,10 @@ ON CONFLICT ("slug") DO NOTHING;
 INSERT INTO "ingredients" (
   "id", "name", "unit", "isActive", "createdAt", "updatedAt"
 ) VALUES
-  ('a0000003-0011-4001-8001-000000000011', 'Tričko Black Tee S', 'PCS', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('a0000003-0012-4001-8001-000000000012', 'Tričko Black Tee M', 'PCS', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('a0000003-0013-4001-8001-000000000013', 'Tričko Black Tee L', 'PCS', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('a0000003-0014-4001-8001-000000000014', 'Tričko Black Tee XL', 'PCS', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+  ('a0000003-0011-4001-8001-000000000011', 'Hranolky S', 'PCS', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('a0000003-0012-4001-8001-000000000012', 'Hranolky M', 'PCS', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('a0000003-0013-4001-8001-000000000013', 'Hranolky L', 'PCS', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('a0000003-0014-4001-8001-000000000014', 'Hranolky XL', 'PCS', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT ("name") DO NOTHING;
 
 -- Produkty
@@ -60,11 +60,11 @@ SELECT
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
 FROM (VALUES
-  ('a0000002-0001-4001-8001-000000000010', 'merch-demo', 'Black Tee (demo)', 'black-tee-demo', 'Vzorové tričko — odmena s výberom veľkosti.', 1, false),
-  ('a0000002-0011-4001-8001-000000000011', 'merch-velkosti-black-tee', 'Black Tee — S', 'black-tee-demo-s', 'Veľkosť S', 1, true),
-  ('a0000002-0012-4001-8001-000000000012', 'merch-velkosti-black-tee', 'Black Tee — M', 'black-tee-demo-m', 'Veľkosť M', 2, true),
-  ('a0000002-0013-4001-8001-000000000013', 'merch-velkosti-black-tee', 'Black Tee — L', 'black-tee-demo-l', 'Veľkosť L', 3, true),
-  ('a0000002-0014-4001-8001-000000000014', 'merch-velkosti-black-tee', 'Black Tee — XL', 'black-tee-demo-xl', 'Veľkosť XL', 4, true)
+  ('a0000002-0001-4001-8001-000000000010', 'merch-demo', 'Tričko Hranolky', 'black-tee-demo', 'Vzorové tričko — odmena s výberom veľkosti.', 1, false),
+  ('a0000002-0011-4001-8001-000000000011', 'merch-velkosti-tricko-hranolky', 'Hranolky S', 'black-tee-demo-s', 'Veľkosť S', 1, true),
+  ('a0000002-0012-4001-8001-000000000012', 'merch-velkosti-tricko-hranolky', 'Hranolky M', 'black-tee-demo-m', 'Veľkosť M', 2, true),
+  ('a0000002-0013-4001-8001-000000000013', 'merch-velkosti-tricko-hranolky', 'Hranolky L', 'black-tee-demo-l', 'Veľkosť L', 3, true),
+  ('a0000002-0014-4001-8001-000000000014', 'merch-velkosti-tricko-hranolky', 'Hranolky XL', 'black-tee-demo-xl', 'Veľkosť XL', 4, true)
 ) AS v(id, cat_slug, name, slug, description, sort_order, is_combo_option)
 JOIN "categories" c ON c."slug" = v.cat_slug
 ON CONFLICT ("slug") DO NOTHING;
@@ -84,10 +84,10 @@ ON CONFLICT ("productId") DO NOTHING;
 INSERT INTO "recipe_items" ("id", "recipeId", "ingredientId", "quantity", "unit")
 SELECT gen_random_uuid(), r.id, i.id, 1, 'PCS'
 FROM (VALUES
-  ('black-tee-demo-s', 'Tričko Black Tee S'),
-  ('black-tee-demo-m', 'Tričko Black Tee M'),
-  ('black-tee-demo-l', 'Tričko Black Tee L'),
-  ('black-tee-demo-xl', 'Tričko Black Tee XL')
+  ('black-tee-demo-s', 'Hranolky S'),
+  ('black-tee-demo-m', 'Hranolky M'),
+  ('black-tee-demo-l', 'Hranolky L'),
+  ('black-tee-demo-xl', 'Hranolky XL')
 ) AS v(product_slug, ingredient_name)
 JOIN "products" p ON p."slug" = v.product_slug
 JOIN "recipes" r ON r."productId" = p.id
@@ -109,7 +109,7 @@ SELECT
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
 FROM "products" parent
-JOIN "categories" pool ON pool."slug" = 'merch-velkosti-black-tee'
+JOIN "categories" pool ON pool."slug" = 'merch-velkosti-tricko-hranolky'
 WHERE parent."slug" = 'black-tee-demo'
 ON CONFLICT ("id") DO NOTHING;
 
@@ -153,10 +153,10 @@ CROSS JOIN (
   SELECT "id" FROM "stores" WHERE "isActive" = true ORDER BY "createdAt" ASC LIMIT 1
 ) AS store
 WHERE i."name" IN (
-  'Tričko Black Tee S',
-  'Tričko Black Tee M',
-  'Tričko Black Tee L',
-  'Tričko Black Tee XL'
+  'Hranolky S',
+  'Hranolky M',
+  'Hranolky L',
+  'Hranolky XL'
 )
 ON CONFLICT ("storeId", "ingredientId") DO UPDATE
 SET "quantity" = GREATEST("inventory_items"."quantity", 10),

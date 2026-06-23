@@ -148,9 +148,10 @@ function ComboSection({
     <div className="border-t pt-6">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h4 className="text-sm font-medium">Výber v kombe</h4>
+          <h4 className="text-sm font-medium">Výber pri objednávke</h4>
           <p className="text-xs text-muted-foreground">
-            Čo si zákazník zvolí pri pridaní do košíka.
+            Napr. nápoj k menu alebo veľkosť merchu. Na produkte vyber pool kategóriu
+            (S/M/L…) — kategórie MERCH a veľkostí sa neprepájajú priamo medzi sebou.
           </p>
         </div>
         <ChoiceGroupDialog productId={productId} pools={pools} />

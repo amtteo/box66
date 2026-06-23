@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import {
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   CreditCard,
   Gift,
   ImageIcon,
@@ -144,6 +146,16 @@ export function CartSheet({
     }
     if (pointsHeld + reward.pointsCost > loyaltyBalance.balance) {
       toast.error("Nemáš dostatok bodov.");
+      return;
+    }
+    if (reward.requiresVariantChoice) {
+      if (!reward.variantChoiceReady) {
+        toast.error(
+          "Veľkosti nie sú dostupné v tejto predajni. V admin/menu pridaj veľkosti (S/M/L…) a označ ich ako dostupné.",
+        );
+        return;
+      }
+      setRewardChoice(reward);
       return;
     }
     if (reward.choiceGroups.length > 0) {
@@ -331,20 +343,12 @@ export function CartSheet({
         <SheetHeader className="border-b-2 border-primary">
           <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              {(view === "checkout" ||
-                view === "payment" ||
-                view === "rewards") && (
+              {(view === "checkout" || view === "payment") && (
                 <Button
                   variant="ghost"
                   size="icon-sm"
                   onClick={() =>
-                    setView(
-                      view === "payment"
-                        ? "checkout"
-                        : view === "rewards"
-                          ? "cart"
-                          : "cart",
-                    )
+                    setView(view === "payment" ? "checkout" : "cart")
                   }
                   disabled={pending}
                 >
@@ -352,9 +356,8 @@ export function CartSheet({
                   <span className="sr-only">Späť</span>
                 </Button>
               )}
-              <SheetTitle>
-                {view === "cart" && "Košík"}
-                {view === "rewards" && "Odmeny"}
+              <SheetTitle className="text-lg">
+                {(view === "cart" || view === "rewards") && "Košík"}
                 {view === "checkout" && "Údaje a platba"}
                 {view === "payment" && "Platba kartou"}
                 {view === "success" && "Objednávka prijatá"}
@@ -364,20 +367,21 @@ export function CartSheet({
               {(view === "cart" || view === "rewards") && (
                 <Button
                   variant="ghost"
-                  size="icon-sm"
                   className={cn(
-                    "size-8 rounded-full border-2 border-foreground",
+                    "gap-1.5 text-lg font-semibold",
                     view === "rewards" && "bg-yellow-400 hover:bg-yellow-500",
                   )}
                   onClick={() =>
                     setView(view === "rewards" ? "cart" : "rewards")
                   }
-                  aria-label={
-                    view === "rewards" ? "Späť do košíka" : "Zobraziť odmeny"
-                  }
                   aria-pressed={view === "rewards"}
                 >
-                  <Gift className="size-4" />
+                  Odmeny
+                  {view === "rewards" ? (
+                    <ChevronUp className="size-5" />
+                  ) : (
+                    <ChevronDown className="size-5" />
+                  )}
                 </Button>
               )}
               <SheetCloseButton />

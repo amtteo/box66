@@ -2,7 +2,7 @@ import Image from "next/image";
 import { Flame, ImageIcon, Wheat } from "lucide-react";
 
 import { ALLERGENS } from "@/lib/catalog/schemas";
-import { formatPresentationPrice } from "@/lib/menu/presentation-format";
+import { PresentationPrice } from "@/components/site/presentation-price";
 import type { PresentationItem } from "@/lib/menu/presentation";
 import { IngredientCompositionStrip } from "@/components/site/ingredient-display";
 import { cn } from "@/lib/utils";
@@ -54,13 +54,15 @@ export function MenuProductDetail({
           >
             {product.name}
           </h1>
-          <p
-            className={cn(
-              "mt-1 font-semibold tabular-nums",
-              compact ? "text-md" : "text-xl",
-            )}
-          >
-            {formatPresentationPrice(product.price, currency)}
+          <p className="mt-1">
+            <PresentationPrice
+              price={product.price}
+              currency={currency}
+              className={cn(
+                "font-semibold",
+                compact ? "text-md" : "text-xl",
+              )}
+            />
           </p>
         </div>
 

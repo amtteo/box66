@@ -147,23 +147,30 @@ export async function getStoreLoyaltyRewards(
 
   return rewards
     .filter((r) => r.product.menuItems[0])
-    .map((r) => ({
-      id: r.id,
-      productId: r.product.id,
-      menuItemId: r.product.menuItems[0]!.id,
-      name: r.product.name,
-      imageUrl: r.product.imageUrl,
-      pointsCost: r.pointsCost,
-      choiceGroups: r.product.choiceGroups
-        .map((g) => ({
-          id: g.id,
-          label: g.label,
-          minSelect: g.minSelect,
-          maxSelect: g.maxSelect,
-          options: optionsByCategory.get(g.categoryId) ?? [],
-        }))
-        .filter((g) => g.options.length > 0),
-    }));
+    .map((r) => {
+      const groupsWithOptions = r.product.choiceGroups.map((g) => ({
+        id: g.id,
+        label: g.label,
+        minSelect: g.minSelect,
+        maxSelect: g.maxSelect,
+        options: optionsByCategory.get(g.categoryId) ?? [],
+      }));
+      const requiredGroups = groupsWithOptions.filter((g) => g.minSelect > 0);
+      const requiresVariantChoice = requiredGroups.length > 0;
+      const variantChoiceReady = requiredGroups.every((g) => g.options.length > 0);
+
+      return {
+        id: r.id,
+        productId: r.product.id,
+        menuItemId: r.product.menuItems[0]!.id,
+        name: r.product.name,
+        imageUrl: r.product.imageUrl,
+        pointsCost: r.pointsCost,
+        choiceGroups: groupsWithOptions.filter((g) => g.options.length > 0),
+        requiresVariantChoice,
+        variantChoiceReady,
+      };
+    });
 }
 
 export type LoyaltyRewardRow = Awaited<ReturnType<typeof getLoyaltyRewards>>[number];

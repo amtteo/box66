@@ -8,8 +8,12 @@ export type LoyaltyRewardDTO = {
   name: string;
   imageUrl: string | null;
   pointsCost: number;
-  /** Skupiny výberu (napr. veľkosť trička) — ak nie sú prázdne, treba vybrať pred pridaním. */
+  /** Skupiny výberu s dostupnými možnosťami v predajni (napr. veľkosť). */
   choiceGroups: MenuChoiceGroupDTO[];
+  /** Produkt má v katalógu povinný výber variantu (napr. veľkosť). */
+  requiresVariantChoice: boolean;
+  /** Všetky povinné skupiny majú v predajni aspoň jednu možnosť. */
+  variantChoiceReady: boolean;
 };
 
 export type LoyaltyBalanceDTO = {

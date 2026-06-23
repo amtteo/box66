@@ -7,7 +7,7 @@ import { ImageIcon, Hamburger } from "lucide-react";
 import { CategoryTab } from "@/components/storefront/category-tab";
 import { MenuProductDetail } from "@/components/site/menu-product-detail";
 import { cn } from "@/lib/utils";
-import { formatPresentationPrice } from "@/lib/menu/presentation-format";
+import { PresentationPrice } from "@/components/site/presentation-price";
 import type {
   PresentationCategory,
   PresentationItem,
@@ -55,12 +55,14 @@ function PresentationProductCard({
         )}
       </div>
       <div className="flex flex-col items-center gap-0.5 px-2 py-2 text-center">
-        <span className="line-clamp-2 text-xl  font-bold leading-tight">
+        <span className="line-clamp-2 text-sm md:text-xl font-bold leading-tight">
           {item.name}
         </span>
-        <span className="text-sm font-semibold tabular-nums">
-          {formatPresentationPrice(item.price, currency)}
-        </span>
+        <PresentationPrice
+          price={item.price}
+          currency={currency}
+          className="text-sm font-semibold"
+        />
       </div>
     </button>
   );
@@ -192,7 +194,7 @@ export function MenuPresentationBoard({
                   className="min-h-full"
                 />
               ) : (
-                <div className="flex flex-col min-h-full flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+                <div className="flex flex-col min-h-full flex-1 items-center justify-start p-6 pt-56 text-center text-sm text-muted-foreground">
                   <Hamburger className="size-24 mb-4 text-zinc-300" />
                   <p>Vyberte produkt vľavo.</p>
                 </div>
@@ -237,7 +239,7 @@ export function MenuPresentationBoard({
               currency={currency}
             />
           ) : (
-            <div className="flex flex-col h-full min-h-[320px] items-center justify-center p-8 text-center text-muted-foreground">
+            <div className="flex flex-col h-full min-h-[320px] items-center justify-start p-8 pt-56 text-center text-muted-foreground">
               <Hamburger className="size-24 mb-4 text-zinc-300" />
               <p>Vyberte produkt pre zobrazenie detailu.</p>
             </div>

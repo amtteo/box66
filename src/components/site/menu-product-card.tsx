@@ -3,7 +3,7 @@ import Image from "next/image";
 import { ImageIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { formatPresentationPrice } from "@/lib/menu/presentation-format";
+import { PresentationPrice } from "@/components/site/presentation-price";
 import type { PresentationItem } from "@/lib/menu/presentation";
 
 export function MenuProductCard({
@@ -38,8 +38,12 @@ export function MenuProductCard({
           <h3 className="font-bold leading-tight group-hover:underline">
             {item.name}
           </h3>
-          <span className="shrink-0 font-bold text-md tabular-nums">
-            {formatPresentationPrice(item.price, currency)}
+          <span className="shrink-0">
+            <PresentationPrice
+              price={item.price}
+              currency={currency}
+              className="font-bold text-md"
+            />
           </span>
         </div>
         {item.description && (
