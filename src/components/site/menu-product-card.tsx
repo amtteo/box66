@@ -3,8 +3,10 @@ import Image from "next/image";
 import { ImageIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { formatMoney } from "@/lib/orders/types";
-import type { PresentationItem } from "@/lib/menu/presentation";
+import {
+  formatPresentationPrice,
+  type PresentationItem,
+} from "@/lib/menu/presentation";
 
 export function MenuProductCard({
   item,
@@ -39,7 +41,7 @@ export function MenuProductCard({
             {item.name}
           </h3>
           <span className="shrink-0 font-semibold tabular-nums">
-            {formatMoney(item.price, currency)}
+            {formatPresentationPrice(item.price, currency)}
           </span>
         </div>
         {item.description && (

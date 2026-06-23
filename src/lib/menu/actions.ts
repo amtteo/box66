@@ -39,16 +39,10 @@ export async function addMenuItem(
 
   const product = await prisma.product.findUnique({
     where: { id: productId },
-    select: { isActive: true, basePrice: true, sortOrder: true },
+    select: { isActive: true, sortOrder: true },
   });
   if (!product || !product.isActive) {
     return { ok: false, errors: { productId: ["Neplatný alebo neaktívny produkt."] } };
-  }
-  if (product.basePrice == null) {
-    return {
-      ok: false,
-      errors: { productId: ["Produkt nemá nastavenú základnú cenu v katalógu."] },
-    };
   }
 
   try {

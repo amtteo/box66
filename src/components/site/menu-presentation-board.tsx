@@ -7,10 +7,10 @@ import { ImageIcon, Hamburger } from "lucide-react";
 import { CategoryTab } from "@/components/storefront/category-tab";
 import { MenuProductDetail } from "@/components/site/menu-product-detail";
 import { cn } from "@/lib/utils";
-import { formatMoney } from "@/lib/orders/types";
-import type {
-  PresentationCategory,
-  PresentationItem,
+import {
+  formatPresentationPrice,
+  type PresentationCategory,
+  type PresentationItem,
 } from "@/lib/menu/presentation";
 
 function PresentationProductCard({
@@ -59,7 +59,7 @@ function PresentationProductCard({
           {item.name}
         </span>
         <span className="text-sm font-semibold tabular-nums">
-          {formatMoney(item.price, currency)}
+          {formatPresentationPrice(item.price, currency)}
         </span>
       </div>
     </button>

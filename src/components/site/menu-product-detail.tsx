@@ -2,8 +2,10 @@ import Image from "next/image";
 import { Flame, ImageIcon, Wheat } from "lucide-react";
 
 import { ALLERGENS } from "@/lib/catalog/schemas";
-import { formatMoney } from "@/lib/orders/types";
-import type { PresentationItem } from "@/lib/menu/presentation";
+import {
+  formatPresentationPrice,
+  type PresentationItem,
+} from "@/lib/menu/presentation";
 import { IngredientCompositionStrip } from "@/components/site/ingredient-display";
 import { cn } from "@/lib/utils";
 
@@ -60,7 +62,7 @@ export function MenuProductDetail({
               compact ? "text-lg" : "text-2xl",
             )}
           >
-            {formatMoney(product.price, currency)}
+            {formatPresentationPrice(product.price, currency)}
           </p>
         </div>
 

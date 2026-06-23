@@ -2,6 +2,7 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { resolveMenuItemPrice, toNumber } from "@/lib/pricing/resolve";
+import { formatMoney } from "@/lib/orders/types";
 
 /** Ingrediencia v zložení produktu (názov + voliteľný obrázok). */
 export type PresentationIngredient = {
@@ -20,7 +21,8 @@ export type PresentationItem = {
   allergens: string[];
   kcal: number | null;
   prepMinutes: number | null;
-  price: number;
+  /** Null = nie je na priamy predaj (napr. vernostná odmena / merch). */
+  price: number | null;
   /** Zloženie z globálnej receptúry (bez množstiev). */
   ingredients: PresentationIngredient[];
 };
@@ -86,14 +88,13 @@ type MenuItemWithProduct = {
   };
 };
 
-function toItem(mi: MenuItemWithProduct, multiplier: number): PresentationItem | null {
+function toItem(mi: MenuItemWithProduct, multiplier: number): PresentationItem {
   const p = mi.product;
   const price = resolveMenuItemPrice({
     basePrice: toNumber(p.basePrice),
     multiplier,
     customPrice: toNumber(mi.customPrice),
   });
-  if (price == null) return null;
   return {
     productId: p.id,
     menuItemId: mi.id,
@@ -152,7 +153,6 @@ export async function getPresentationMenu(
   const map = new Map<string, PresentationCategory>();
   for (const mi of items) {
     const item = toItem(mi as MenuItemWithProduct, multiplier);
-    if (!item) continue;
     const cat = mi.product.category;
     if (!map.has(cat.id)) {
       map.set(cat.id, {
@@ -200,7 +200,6 @@ export async function getPresentationProduct(
   if (!mi) return null;
 
   const item = toItem(mi as MenuItemWithProduct, multiplier);
-  if (!item) return null;
   const categoryId = mi.product.category.id;
 
   const siblings = await prisma.menuItem.findMany({
@@ -222,10 +221,17 @@ export async function getPresentationProduct(
     ...item,
     categoryId,
     categoryName: mi.product.category.name,
-    related: siblings
-      .map((s) => toItem(s as MenuItemWithProduct, multiplier))
-      .filter((s): s is PresentationItem => s != null),
+    related: siblings.map((s) => toItem(s as MenuItemWithProduct, multiplier)),
   };
+}
+
+/** Cena na prezentačnom menu; bez ceny = vernostná odmena (nie priamy predaj). */
+export function formatPresentationPrice(
+  price: number | null,
+  currency: string,
+): string {
+  if (price == null) return "Vernostná odmena";
+  return formatMoney(price, currency);
 }
 
 /** Kontaktné údaje predvolenej predajne pre footer / stránku Kontakt. */
