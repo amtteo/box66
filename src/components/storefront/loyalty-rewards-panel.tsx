@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { Check, Gift, ImageIcon, Loader2 } from "lucide-react";
+import { Check, ImageIcon, Key, Loader2 } from "lucide-react";
 
 import { CartSignInBanner } from "@/components/storefront/cart-sign-in-banner";
+import { LOYALTY_MAX_GRID_ITEMS } from "@/lib/loyalty/constants";
 import { cn } from "@/lib/utils";
 import type { LoyaltyBalanceDTO, LoyaltyRewardDTO } from "@/lib/loyalty/types";
 
@@ -37,6 +38,11 @@ export function LoyaltyRewardsPanel({
 
   const available = balance?.available ?? 0;
 
+  const slots: (LoyaltyRewardDTO | null)[] = Array.from(
+    { length: LOYALTY_MAX_GRID_ITEMS },
+    (_, i) => rewards[i] ?? null,
+  );
+
   return (
     <div className="space-y-6">
       {isAuthed ? (
@@ -45,34 +51,27 @@ export function LoyaltyRewardsPanel({
         <CartSignInBanner onSuccess={onSignInSuccess} />
       )}
 
-      {rewards.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-12 text-center">
-          <Gift className="size-10 text-muted-foreground" />
-          <p className="text-lg font-semibold">Žiadne odmeny</p>
-          <p className="max-w-xs text-sm text-muted-foreground">
-            V tejto predajni zatiaľ nie sú dostupné žiadne odmeny.
-          </p>
-        </div>
-      ) : (
-        <>
-          <ul className="grid grid-cols-3 gap-3">
-            {rewards.map((reward) => {
-              const inCart = rewardQuantity(reward.id);
-              const affordable =
-                isAuthed && available >= reward.pointsCost;
-              return (
-                <RewardCard
-                  key={reward.id}
-                  reward={reward}
-                  affordable={affordable}
-                  inCart={inCart}
-                  disabled={!isAuthed || !affordable}
-                  onSelect={() => onSelectReward(reward)}
-                />
-              );
-            })}
-          </ul>
-        </>
+      <ul className="grid grid-cols-3 gap-3">
+        {slots.map((reward, index) =>
+          reward ? (
+            <RewardCard
+              key={reward.id}
+              reward={reward}
+              inCart={rewardQuantity(reward.id) > 0}
+              disabled={!isAuthed || available < reward.pointsCost}
+              onSelect={() => onSelectReward(reward)}
+            />
+          ) : (
+            <LockedRewardSlot key={`locked-${index}`} />
+          ),
+        )}
+      </ul>
+
+      {rewards.length === 0 && (
+        <p className="text-center text-sm text-muted-foreground">
+          Zatiaľ nie sú nastavené žiadne odmeny. Prázdne políčka sa odomknú, keď
+          ich pridáš v admin-e.
+        </p>
       )}
     </div>
   );
@@ -108,16 +107,30 @@ export function LoyaltySelectedSummary({
   );
 }
 
+function LockedRewardSlot() {
+  return (
+    <li aria-hidden>
+      <div className="flex h-full w-full flex-col border-2 border-primary bg-transparent">
+        <div className="relative flex aspect-square w-full items-center justify-center">
+          <Key className="size-16 text-primary" strokeWidth={1.5} aria-hidden />
+        </div>
+        <div className="p-2" aria-hidden>
+          <p className="invisible text-xs font-semibold leading-tight">.</p>
+          <p className="invisible text-xs font-bold">.</p>
+        </div>
+      </div>
+    </li>
+  );
+}
+
 function RewardCard({
   reward,
-  affordable,
   inCart,
   disabled,
   onSelect,
 }: {
   reward: LoyaltyRewardDTO;
-  affordable: boolean;
-  inCart: number;
+  inCart: boolean;
   disabled: boolean;
   onSelect: () => void;
 }) {
@@ -134,15 +147,9 @@ function RewardCard({
             : "cursor-pointer hover:bg-yellow-50 active:bg-yellow-100",
         )}
       >
-        {inCart > 0 && (
-          <span className="absolute right-1 top-1 z-10 flex size-7 items-center justify-center rounded-full bg-green-400 text-white">
-            {inCart > 1 ? (
-              <span className="text-xs font-bold tabular-nums">
-                {inCart}
-              </span>
-            ) : (
-              <Check className="size-4" strokeWidth={3} />
-            )}
+        {inCart && (
+          <span className="absolute right-1 top-1 z-10 flex size-6 items-center justify-center rounded-full bg-green-500 text-white">
+            <Check className="size-3.5" strokeWidth={3} />
           </span>
         )}
         <div className="relative aspect-square w-full overflow-hidden border-b-2 border-primary">
