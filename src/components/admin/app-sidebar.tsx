@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Boxes,
   Building2,
+  Gift,
   LayoutDashboard,
   Percent,
   Receipt,
@@ -60,6 +61,7 @@ const FRANSIZA: NavItem[] = [
 
 const PLATFORMA: NavItem[] = [
   { title: "Katalóg produktov", href: "/admin/katalog", icon: Boxes, cap: "superAdmin" },
+  { title: "Odmeny", href: "/admin/odmeny", icon: Gift, cap: "superAdmin" },
   { title: "Donáška (šablóna)", href: "/admin/katalog/donaska", icon: Truck, cap: "superAdmin" },
   { title: "Organizácie", href: "/admin/organizacie", icon: Building2, cap: "superAdmin" },
   { title: "Koeficienty cien", href: "/admin/koeficienty-cien", icon: Percent, cap: "superAdmin" },

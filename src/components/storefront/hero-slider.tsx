@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const HERO_SLIDES = [
-  { mobile: "/slide_mobile1.webp", desktop: "/slide1.webp" },
-  { mobile: "/slide_mobile2.webp", desktop: "/slide2.webp" },
+  { mobile: "/slide1mobile.webp", desktop: "/slider1.webp" },
+  { mobile: "/slide2mobile.webp", desktop: "/slider2.webp" },
 ] as const;
 
 const SLIDE_INTERVAL_MS = 5000;

@@ -24,6 +24,19 @@ import {
   type OrderLine,
   type TxClient,
 } from "@/lib/orders/stock";
+import {
+  resolveLoyaltyCartItem,
+  validateLoyaltyCheckout,
+} from "@/lib/loyalty/checkout";
+import {
+  InsufficientLoyaltyPointsError,
+  redeemLoyaltyPoints,
+} from "@/lib/loyalty/ledger";
+import {
+  awardLoyaltyOnCompleted,
+  reverseLoyaltyOnCancelled,
+  reverseLoyaltyOnRefunded,
+} from "@/lib/loyalty/order-lifecycle";
 
 const ADMIN_ORDERS_PATH = "/admin/objednavky";
 const ADMIN_STOCK_PATH = "/admin/sklad";
@@ -91,6 +104,10 @@ export async function placeOrder(
   }
 
   const priceMultiplier = Number(store.priceCoefficient.multiplier);
+
+  const loyaltyCartItems = data.items.filter((i) => i.loyaltyRewardId);
+  const regularCartItems = data.items.filter((i) => !i.loyaltyRewardId);
+  const hasLoyaltyItems = loyaltyCartItems.length > 0;
 
   // Načítaj iba dostupné položky menu danej predajne a prepočítaj ceny.
   const menuItemIds = [...new Set(data.items.map((i) => i.menuItemId))];
@@ -169,7 +186,7 @@ export async function placeOrder(
     menuItemId: string;
     nameSnapshot: string;
   };
-  type OrderLine = {
+  type BuiltOrderLine = {
     menuItemId: string;
     productId: string;
     nameSnapshot: string;
@@ -178,10 +195,13 @@ export async function placeOrder(
     lineTotal: number;
     note: string | null;
     choices: ResolvedChoice[];
+    isLoyaltyReward?: boolean;
+    pointsRedeemed?: number;
+    loyaltyRewardId?: string;
   };
 
-  const orderLines: OrderLine[] = [];
-  for (const item of data.items) {
+  const orderLines: BuiltOrderLine[] = [];
+  for (const item of regularCartItems) {
     const mi = byId.get(item.menuItemId);
     if (!mi) {
       return {
@@ -261,9 +281,75 @@ export async function placeOrder(
     });
   }
 
+  for (const item of loyaltyCartItems) {
+    const resolved = await resolveLoyaltyCartItem(store.id, {
+      ...item,
+      loyaltyRewardId: item.loyaltyRewardId!,
+    });
+    if ("error" in resolved) {
+      return { ok: false, message: resolved.error };
+    }
+    orderLines.push({
+      menuItemId: resolved.menuItemId,
+      productId: resolved.productId,
+      nameSnapshot: resolved.nameSnapshot,
+      unitPrice: 0,
+      quantity: resolved.quantity,
+      lineTotal: 0,
+      note: item.note ?? null,
+      choices: [],
+      isLoyaltyReward: true,
+      pointsRedeemed: resolved.pointsRedeemed,
+      loyaltyRewardId: resolved.loyaltyRewardId,
+    });
+  }
+
   const subtotal = round2(
     orderLines.reduce((sum, l) => sum + l.lineTotal, 0),
   );
+  const paidSubtotal = round2(
+    orderLines
+      .filter((l) => !l.isLoyaltyReward)
+      .reduce((sum, l) => sum + l.lineTotal, 0),
+  );
+
+  const user = await getUser();
+  const customerId = user
+    ? (
+        await prisma.profile.findUnique({
+          where: { id: user.id },
+          select: { id: true },
+        })
+      )?.id ?? null
+    : null;
+
+  const loyaltyValidation = validateLoyaltyCheckout({
+    hasLoyaltyItems,
+    paidSubtotal,
+    customerId,
+  });
+  if (!loyaltyValidation.ok) {
+    return { ok: false, message: loyaltyValidation.message };
+  }
+
+  const totalPointsToRedeem = orderLines.reduce(
+    (sum, l) => sum + (l.pointsRedeemed ?? 0),
+    0,
+  );
+  if (totalPointsToRedeem > 0 && customerId) {
+    const balance = await prisma.loyaltyAccount.findUnique({
+      where: {
+        profileId_storeId: { profileId: customerId, storeId: store.id },
+      },
+      select: { balance: true },
+    });
+    if (!balance || balance.balance < totalPointsToRedeem) {
+      return {
+        ok: false,
+        message: "Nemáš dostatok bodov na uplatnenie odmien.",
+      };
+    }
+  }
 
   let deliveryFee = 0;
   let deliveryDistanceKm: number | null = null;
@@ -302,15 +388,12 @@ export async function placeOrder(
 
   const total = round2(subtotal + deliveryFee);
 
-  const user = await getUser();
-  const customerId = user
-    ? (
-        await prisma.profile.findUnique({
-          where: { id: user.id },
-          select: { id: true },
-        })
-      )?.id ?? null
-    : null;
+  const redeemLines = orderLines
+    .filter((l) => l.isLoyaltyReward && l.loyaltyRewardId && l.pointsRedeemed)
+    .map((l) => ({
+      rewardId: l.loyaltyRewardId!,
+      points: l.pointsRedeemed!,
+    }));
 
   // Vytvor objednávku + položky s pridelením poradového čísla (s retry pri kolízii).
   let created: { id: string; orderNumber: number } | null = null;
@@ -349,6 +432,8 @@ export async function placeOrder(
                 quantity: l.quantity,
                 lineTotal: l.lineTotal,
                 note: l.note,
+                isLoyaltyReward: l.isLoyaltyReward ?? false,
+                pointsRedeemed: l.pointsRedeemed ?? null,
                 choices: {
                   create: l.choices.map((c) => ({
                     groupId: c.groupId,
@@ -363,9 +448,25 @@ export async function placeOrder(
           },
           select: { id: true, orderNumber: true },
         });
+
+        if (redeemLines.length > 0 && customerId) {
+          await redeemLoyaltyPoints(tx, {
+            profileId: customerId,
+            storeId: store.id,
+            orderId: order.id,
+            lines: redeemLines,
+          });
+        }
+
         return order;
       });
     } catch (err) {
+      if (err instanceof InsufficientLoyaltyPointsError) {
+        return {
+          ok: false,
+          message: "Nemáš dostatok bodov na uplatnenie odmien.",
+        };
+      }
       if (isUniqueViolation(err)) continue; // kolízia orderNumber → skús znova
       console.error("[placeOrder] create failed:", err);
       return { ok: false, message: "Objednávku sa nepodarilo vytvoriť." };
@@ -390,7 +491,9 @@ export async function placeOrder(
       mode: "payment",
       redirect_on_completion: "never",
       line_items: [
-        ...orderLines.map((l) => ({
+        ...orderLines
+          .filter((l) => l.unitPrice > 0)
+          .map((l) => ({
           quantity: l.quantity,
           price_data: {
             currency: store.currency.toLowerCase(),
@@ -526,6 +629,8 @@ export type UpdateStatusResult = { ok: true } | { ok: false; message: string };
 export type UpdateOrderStatusOptions = {
   /** Pri zrušení/refundácii: vrátiť suroviny na sklad? (default podľa stavu objednávky) */
   restoreStock?: boolean;
+  /** Pri čiastočnom refunde: suma vráteného jedla pre proporcionálne storno EARN bodov. */
+  refundedSubtotal?: number;
 };
 
 /**
@@ -543,6 +648,7 @@ export async function updateOrderStatus(
     select: {
       id: true,
       storeId: true,
+      customerId: true,
       status: true,
       paymentStatus: true,
       paymentMethod: true,
@@ -551,6 +657,8 @@ export async function updateOrderStatus(
         select: {
           productId: true,
           quantity: true,
+          isLoyaltyReward: true,
+          lineTotal: true,
           choices: { select: { productId: true } },
         },
       },
@@ -641,6 +749,23 @@ export async function updateOrderStatus(
               : {}),
         },
       });
+
+      const loyaltyOrder = {
+        id: order.id,
+        storeId: order.storeId,
+        customerId: order.customerId,
+        items: order.items,
+      };
+
+      if (nextStatus === OrderStatus.COMPLETED) {
+        await awardLoyaltyOnCompleted(tx, loyaltyOrder);
+      } else if (nextStatus === OrderStatus.CANCELLED) {
+        await reverseLoyaltyOnCancelled(tx, loyaltyOrder);
+      } else if (nextStatus === OrderStatus.REFUNDED) {
+        await reverseLoyaltyOnRefunded(tx, loyaltyOrder, {
+          refundedSubtotal: options?.refundedSubtotal,
+        });
+      }
     });
   } catch (err) {
     if (err instanceof Error && err.message === "INSUFFICIENT_STOCK") {

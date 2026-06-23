@@ -87,6 +87,14 @@ enum StockMovementType {
   RETURN //      vrátenie dodávateľovi
 }
 
+enum LoyaltyTxType {
+  EARN //            body za dokončenú objednávku
+  REDEEM //          uplatnenie odmeny v objednávke
+  EARN_REVERSAL //   storno bodov (refund / zrušenie)
+  REDEEM_REVERSAL // vrátenie uplatnených bodov
+  ADJUSTMENT //     manuálna korekcia (rezervované)
+}
+
 // ──────────────────────────── Identity ───────────────────────────
 
 /// Zrkadlo auth.users (Supabase). id = auth.users.id
@@ -103,6 +111,7 @@ model Profile {
   memberships      Membership[]
   ordersAsCustomer Order[]         @relation("CustomerOrders")
   stockMovements   StockMovement[] @relation("StockMovementCreatedBy")
+  loyaltyAccounts  LoyaltyAccount[]
 
   @@index([email])
   @@map("profiles")
@@ -165,6 +174,7 @@ model Store {
   storeSuppliers     StoreSupplier[]
   supplierPrices     SupplierIngredient[]
   deliveryZones      StoreDeliveryZone[]
+  loyaltyAccounts    LoyaltyAccount[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -290,6 +300,7 @@ model Product {
   choiceGroups        ProductChoiceGroup[]
   menuUpsellProduct   Product?             @relation("MenuUpsell", fields: [menuUpsellProductId], references: [id], onDelete: SetNull)
   menuUpsellFor       Product[]            @relation("MenuUpsell")
+  loyaltyReward       LoyaltyReward?
 
   @@index([categoryId])
   @@map("products")
@@ -547,9 +558,10 @@ model Order {
   updatedAt   DateTime  @updatedAt
 
   store          Store           @relation(fields: [storeId], references: [id], onDelete: Restrict)
-  customer       Profile?        @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: SetNull)
-  items          OrderItem[]
-  stockMovements StockMovement[]
+  customer            Profile?             @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: SetNull)
+  items               OrderItem[]
+  stockMovements      StockMovement[]
+  loyaltyTransactions LoyaltyTransaction[]
 
   @@unique([storeId, orderNumber])
   @@index([storeId])
@@ -568,8 +580,10 @@ model OrderItem {
   nameSnapshot String
   unitPrice    Decimal @db.Decimal(10, 2)
   quantity     Int     @default(1)
-  lineTotal    Decimal @db.Decimal(10, 2)
-  note         String?
+  lineTotal        Decimal @db.Decimal(10, 2)
+  note             String?
+  isLoyaltyReward  Boolean @default(false)
+  pointsRedeemed   Int?
 
   order    Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
   menuItem MenuItem?         @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
@@ -597,4 +611,61 @@ model OrderItemChoice {
 
   @@index([orderItemId])
   @@map("order_item_choices")
+}
+
+// ──────────────────────────── Loyalty ────────────────────────────
+
+/// Odmena vo vernostnom programe — produkt z katalógu + cena v bodoch (superadmin).
+model LoyaltyReward {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  productId  String   @unique @db.Uuid
+  pointsCost Int
+  isActive   Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  product      Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  transactions LoyaltyTransaction[]
+
+  @@map("loyalty_rewards")
+}
+
+/// Zostatok bodov zákazníka v konkrétnej predajni.
+model LoyaltyAccount {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  profileId String   @db.Uuid
+  storeId   String   @db.Uuid
+  balance   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile      Profile              @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  store        Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  transactions LoyaltyTransaction[]
+
+  @@unique([profileId, storeId])
+  @@index([profileId])
+  @@index([storeId])
+  @@map("loyalty_accounts")
+}
+
+/// Kniha pohybov bodov — zdroj pravdy pre audit a refundy.
+model LoyaltyTransaction {
+  id        String         @id @default(uuid(7)) @db.Uuid
+  accountId String         @db.Uuid
+  type      LoyaltyTxType
+  points    Int // kladné = prírastok zostatku, záporné = úbytok
+  orderId   String?        @db.Uuid
+  rewardId  String?        @db.Uuid
+  note      String?
+  createdAt DateTime       @default(now())
+
+  account LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  order   Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  reward  LoyaltyReward? @relation(fields: [rewardId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, createdAt])
+  @@index([orderId])
+  @@map("loyalty_transactions")
 }

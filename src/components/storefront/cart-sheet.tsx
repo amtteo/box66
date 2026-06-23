@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   CheckCircle2,
   CreditCard,
+  Gift,
   ImageIcon,
   Minus,
   Plus,
@@ -31,8 +33,14 @@ import {
 } from "@/components/ui/sheet";
 import { FieldError, FormMessage } from "@/components/admin/form-feedback";
 import { CartSignInBanner } from "@/components/storefront/cart-sign-in-banner";
+import { showCartAddedToast } from "@/components/storefront/cart-added-toast";
+import { LoyaltyRewardsPanel } from "@/components/storefront/loyalty-rewards-panel";
 import { useStorefront } from "@/components/storefront/storefront-context";
 import { useCart } from "@/components/storefront/cart-context";
+import { fetchStoreLoyalty } from "@/lib/loyalty/storefront";
+import { hasLoyaltyRewards, paidSubtotal } from "@/lib/loyalty/cart";
+import { LOYALTY_MIN_PAID_SUBTOTAL } from "@/lib/loyalty/constants";
+import type { LoyaltyBalanceDTO, LoyaltyRewardDTO } from "@/lib/loyalty/types";
 import { StripeCheckout } from "@/components/storefront/stripe-checkout";
 import { cn } from "@/lib/utils";
 import {
@@ -45,10 +53,10 @@ import {
   PAYMENT_STATUS_LABEL,
 } from "@/lib/orders/schemas";
 import { OrderType, PaymentMethod } from "@/generated/prisma/enums";
-import { formatMoney } from "@/lib/orders/types";
+import { formatMoney, type CartLine } from "@/lib/orders/types";
 import { formatDeliveryDuration } from "@/lib/delivery/format";
 
-type View = "cart" | "checkout" | "payment" | "success";
+type View = "cart" | "rewards" | "checkout" | "payment" | "success";
 
 export function CartSheet({
   storeId,
@@ -63,8 +71,17 @@ export function CartSheet({
   defaultCustomer?: { name?: string; email?: string };
   isAuthed?: boolean;
 }) {
-  const { lines, totalQuantity, subtotal, setQuantity, remove, clear } =
-    useCart();
+  const {
+    lines,
+    totalQuantity,
+    subtotal,
+    pointsHeld,
+    setQuantity,
+    remove,
+    clear,
+    addReward,
+    rewardQuantity,
+  } = useCart();
   const { delivery, deliveryCoords, fulfillmentMode, requestFulfillmentSetup } =
     useStorefront();
   const router = useRouter();
@@ -88,6 +105,59 @@ export function CartSheet({
   const [clientSecret, setClientSecret] = useState<string>();
   const [orderId, setOrderId] = useState<string>();
   const [success, setSuccess] = useState<OrderStatusInfo>();
+  const [loyaltyRewards, setLoyaltyRewards] = useState<LoyaltyRewardDTO[]>([]);
+  const [loyaltyBalance, setLoyaltyBalance] =
+    useState<LoyaltyBalanceDTO | null>(null);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+
+  const loyaltyBalanceWithHold = useMemo(() => {
+    if (!loyaltyBalance) return null;
+    return {
+      ...loyaltyBalance,
+      available: Math.max(0, loyaltyBalance.balance - pointsHeld),
+    };
+  }, [loyaltyBalance, pointsHeld]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setLoyaltyLoading(true);
+    void fetchStoreLoyalty(storeId).then((data) => {
+      if (cancelled) return;
+      setLoyaltyRewards(data.rewards);
+      setLoyaltyBalance(data.balance);
+      setLoyaltyLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, storeId, signedIn]);
+
+  function handleAddReward(reward: LoyaltyRewardDTO) {
+    if (!signedIn || !loyaltyBalance) {
+      toast.error("Pre uplatnenie odmien sa prihlás.");
+      return;
+    }
+    if (pointsHeld + reward.pointsCost > loyaltyBalance.balance) {
+      toast.error("Nemáš dostatok bodov.");
+      return;
+    }
+    addReward(reward);
+    showCartAddedToast(reward.name);
+  }
+
+  function handleSetQuantity(lineId: string, quantity: number) {
+    const line = lines.find((l) => l.lineId === lineId);
+    if (line?.isLoyaltyReward && line.pointsCost && loyaltyBalance) {
+      const otherHeld = pointsHeld - line.pointsCost * line.quantity;
+      const maxQty = Math.floor(
+        (loyaltyBalance.balance - otherHeld) / line.pointsCost,
+      );
+      setQuantity(lineId, Math.min(quantity, Math.max(0, maxQty)));
+      return;
+    }
+    setQuantity(lineId, quantity);
+  }
 
   function handleSignInSuccess(customer: { name?: string; email: string }) {
     setSignedIn(true);
@@ -108,6 +178,8 @@ export function CartSheet({
         setOrderId(undefined);
       } else if (view === "payment") {
         setView("cart");
+      } else if (view === "rewards") {
+        setView("cart");
       }
     }
   }
@@ -115,6 +187,11 @@ export function CartSheet({
   const deliveryFee =
     fulfillmentMode === "delivery" && delivery.fee != null ? delivery.fee : 0;
   const grandTotal = subtotal + deliveryFee;
+  const cartPaidSubtotal = paidSubtotal(lines);
+  const cartHasLoyalty = hasLoyaltyRewards(lines);
+  const loyaltyCheckoutBlocked =
+    cartHasLoyalty &&
+    (!signedIn || cartPaidSubtotal < LOYALTY_MIN_PAID_SUBTOTAL);
   const checkoutBlocked =
     fulfillmentMode === "delivery"
       ? delivery.fee == null || !!delivery.error
@@ -157,6 +234,9 @@ export function CartSheet({
           groupId: c.groupId,
           menuItemId: c.menuItemId,
         })),
+        ...(l.isLoyaltyReward && l.loyaltyRewardId
+          ? { loyaltyRewardId: l.loyaltyRewardId }
+          : {}),
       })),
     };
 
@@ -178,6 +258,7 @@ export function CartSheet({
           paymentStatus: "UNPAID",
         });
         clear();
+        router.refresh();
         setView("success");
       }
     });
@@ -190,6 +271,7 @@ export function CartSheet({
         info ?? { orderNumber: 0, status: "PENDING", paymentStatus: "PAID" },
       );
       clear();
+      router.refresh();
       setView("success");
     });
   }
@@ -229,11 +311,21 @@ export function CartSheet({
         <SheetHeader className="border-b-2 border-primary">
           <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              {(view === "checkout" || view === "payment") && (
+              {(view === "checkout" ||
+                view === "payment" ||
+                view === "rewards") && (
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => setView(view === "payment" ? "checkout" : "cart")}
+                  onClick={() =>
+                    setView(
+                      view === "payment"
+                        ? "checkout"
+                        : view === "rewards"
+                          ? "cart"
+                          : "cart",
+                    )
+                  }
                   disabled={pending}
                 >
                   <ArrowLeft className="size-4" />
@@ -242,22 +334,59 @@ export function CartSheet({
               )}
               <SheetTitle>
                 {view === "cart" && "Košík"}
+                {view === "rewards" && "Odmeny"}
                 {view === "checkout" && "Údaje a platba"}
                 {view === "payment" && "Platba kartou"}
                 {view === "success" && "Objednávka prijatá"}
               </SheetTitle>
             </div>
-            <SheetCloseButton />
+            <div className="flex shrink-0 items-center gap-2">
+              {(view === "cart" || view === "rewards") && (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className={cn(
+                    "size-8 rounded-full border-2 border-foreground",
+                    view === "rewards" && "bg-yellow-400 hover:bg-yellow-500",
+                  )}
+                  onClick={() =>
+                    setView(view === "rewards" ? "cart" : "rewards")
+                  }
+                  aria-label={
+                    view === "rewards" ? "Späť do košíka" : "Zobraziť odmeny"
+                  }
+                  aria-pressed={view === "rewards"}
+                >
+                  <Gift className="size-4" />
+                </Button>
+              )}
+              <SheetCloseButton />
+            </div>
           </div>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto p-4">
           <div className="mx-auto w-full max-w-2xl">
+            {view === "rewards" && (
+              <LoyaltyRewardsPanel
+                rewards={loyaltyRewards}
+                balance={loyaltyBalanceWithHold}
+                pointsHeld={pointsHeld}
+                loading={loyaltyLoading}
+                isAuthed={signedIn}
+                rewardQuantity={rewardQuantity}
+                onSignInSuccess={handleSignInSuccess}
+                onSelectReward={handleAddReward}
+              />
+            )}
+
             {view === "cart" && (
               <CartView
                 currency={currency}
                 lines={lines}
-                setQuantity={setQuantity}
+                pointsBalance={loyaltyBalance?.balance ?? 0}
+                pointsHeld={pointsHeld}
+                setQuantity={handleSetQuantity}
                 remove={remove}
                 deliveryFee={
                   fulfillmentMode === "delivery" && delivery.fee != null
@@ -285,7 +414,20 @@ export function CartSheet({
               <div className="space-y-6">
                 <FormMessage message={error} />
 
-                {!signedIn && (
+                {cartHasLoyalty && !signedIn && (
+                  <CartSignInBanner onSuccess={handleSignInSuccess} />
+                )}
+
+                {cartHasLoyalty &&
+                  signedIn &&
+                  cartPaidSubtotal < LOYALTY_MIN_PAID_SUBTOTAL && (
+                    <p className="rounded-lg border-2 border-primary bg-amber-50 px-4 py-3 text-sm font-medium">
+                      Pre uplatnenie odmien musíš mať v košíku jedlo za
+                      minimálne {LOYALTY_MIN_PAID_SUBTOTAL} € (bez donášky).
+                    </p>
+                  )}
+
+                {!signedIn && !cartHasLoyalty && (
                   <CartSignInBanner onSuccess={handleSignInSuccess} />
                 )}
 
@@ -397,11 +539,16 @@ export function CartSheet({
           </div>
         </div>
                             
-        {(view === "cart" || view === "checkout" || view === "success") && (
+        {(view === "cart" ||
+          view === "rewards" ||
+          view === "checkout" ||
+          view === "success") && (
           <div className="border-t-2 border-primary bg-yellow-400">
             <div className="mx-auto w-full max-w-2xl space-y-2 p-4">
               <div className="flex items-center justify-between gap-4">
-              {view !== "success" ? (
+              {view === "rewards" ? (
+                <div />
+              ) : view !== "success" ? (
                 <div className="flex items-baseline gap-3">
                   <span className="text-xl font-bold">Spolu</span>
                   <span className="text-2xl font-bold tabular-nums">
@@ -410,6 +557,16 @@ export function CartSheet({
                 </div>
               ) : (
                 <div />
+              )}
+
+              {view === "rewards" && (
+                <Button
+                  className="ml-auto shrink-0 px-8"
+                  size="lg"
+                  onClick={() => setView("cart")}
+                >
+                  Pokračovať v nákupe
+                </Button>
               )}
 
               {view === "cart" && (
@@ -444,7 +601,12 @@ export function CartSheet({
                   form="checkout-form"
                   className="shrink-0 px-8"
                   size="lg"
-                  disabled={pending || lines.length === 0 || checkoutBlocked}
+                  disabled={
+                    pending ||
+                    lines.length === 0 ||
+                    checkoutBlocked ||
+                    loyaltyCheckoutBlocked
+                  }
                 >
                   {pending
                     ? "Spracúvam…"
@@ -476,6 +638,8 @@ export function CartSheet({
 function CartView({
   currency,
   lines,
+  pointsBalance,
+  pointsHeld,
   setQuantity,
   remove,
   deliveryFee,
@@ -485,9 +649,11 @@ function CartView({
   deliveryError,
 }: {
   currency: string;
-  lines: ReturnType<typeof useCart>["lines"];
-  setQuantity: ReturnType<typeof useCart>["setQuantity"];
-  remove: ReturnType<typeof useCart>["remove"];
+  lines: CartLine[];
+  pointsBalance: number;
+  pointsHeld: number;
+  setQuantity: (lineId: string, quantity: number) => void;
+  remove: (lineId: string) => void;
   deliveryFee: number | null;
   deliveryAddress: string | null;
   deliveryDistanceKm: number | null;
@@ -505,7 +671,17 @@ function CartView({
 
   return (
     <ul className="">
-      {lines.map((line) => (
+      {lines.map((line) => {
+        const isReward = line.isLoyaltyReward && line.pointsCost;
+        const otherHeld = isReward
+          ? pointsHeld - line.pointsCost! * line.quantity
+          : 0;
+        const maxRewardQty = isReward
+          ? Math.floor((pointsBalance - otherHeld) / line.pointsCost!)
+          : 99;
+        const canIncrease = !isReward || line.quantity < maxRewardQty;
+
+        return (
         <li key={line.lineId} className="flex gap-4 py-4 border-b-2 border-primary">
           <div className="relative size-20 shrink-0 overflow-hidden border-2 border-primary">
             {line.imageUrl ? (
@@ -521,16 +697,26 @@ function CartView({
                 <ImageIcon className="size-7 text-muted-foreground" />
               </div>
             )}
+            {isReward && (
+              <span className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-0.5 bg-primary/90 py-0.5 text-[10px] font-bold text-white">
+                <Gift className="size-3" />
+                Odmena
+              </span>
+            )}
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
             <div className="min-w-0 flex-1">
               <p className="text-lg font-semibold leading-snug">{line.name}</p>
-              {line.choices.length > 0 && (
+              {isReward ? (
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  {line.pointsCost! * line.quantity} bodov
+                </p>
+              ) : line.choices.length > 0 ? (
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   {formatMoney(line.price, currency)}, {line.choices.map((c) => c.name).join(", ")}
                 </p>
-              )}
+              ) : null}
             </div>
 
             <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end sm:gap-4">
@@ -550,6 +736,7 @@ function CartView({
                   variant="ghost"
                   size="icon"
                   className="size-10"
+                  disabled={!canIncrease}
                   onClick={() => setQuantity(line.lineId, line.quantity + 1)}
                 >
                   <Plus className="size-6" />
@@ -558,7 +745,9 @@ function CartView({
 
               <div className="flex items-center gap-2">
                 <span className="text-lg font-semibold tabular-nums min-w-20 text-right">
-                  {formatMoney(line.price * line.quantity, currency)}
+                  {isReward
+                    ? formatMoney(0, currency)
+                    : formatMoney(line.price * line.quantity, currency)}
                 </span>
                 <Button
                   variant="ghost"
@@ -573,7 +762,8 @@ function CartView({
             </div>
           </div>
         </li>
-      ))}
+        );
+      })}
       {deliveryFee != null && (
         <li className="flex gap-4 py-4">
           <div className="relative size-20 shrink-0 overflow-hidden border-2 border-primary">

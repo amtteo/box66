@@ -69,6 +69,10 @@ export type CartLine = {
   quantity: number;
   imageUrl: string | null;
   choices: CartChoice[];
+  /** Vernostná odmena — cena 0 €, body sa držia virtuálne v košíku. */
+  isLoyaltyReward?: boolean;
+  loyaltyRewardId?: string;
+  pointsCost?: number;
 };
 
 /** Naformátuje sumu v mene predajne (sk-SK). */

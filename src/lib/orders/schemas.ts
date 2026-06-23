@@ -62,16 +62,28 @@ export const CartChoiceSchema = z.object({
 });
 
 /** Jedna položka košíka, ako ju posiela klient (cena sa dopočíta na serveri). */
-export const CartItemSchema = z.object({
-  menuItemId: z.uuid(),
-  quantity: z.coerce
-    .number()
-    .int()
-    .min(1, { error: "Množstvo musí byť aspoň 1." })
-    .max(99, { error: "Maximálne 99 ks na položku." }),
-  note: optionalText,
-  choices: z.array(CartChoiceSchema).max(50).default([]),
-});
+export const CartItemSchema = z
+  .object({
+    menuItemId: z.uuid(),
+    quantity: z.coerce
+      .number()
+      .int()
+      .min(1, { error: "Množstvo musí byť aspoň 1." })
+      .max(99, { error: "Maximálne 99 ks na položku." }),
+    note: optionalText,
+    choices: z.array(CartChoiceSchema).max(50).default([]),
+    /** Vernostná odmena — cena 0 €, body sa odpočítajú pri objednávke. */
+    loyaltyRewardId: z.uuid().optional(),
+  })
+  .superRefine((item, ctx) => {
+    if (item.loyaltyRewardId && item.choices.length > 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Odmena nemôže mať výber komba.",
+        path: ["choices"],
+      });
+    }
+  });
 
 /** Payload checkoutu z úvodnej stránky (objednávka hosťa alebo prihláseného). */
 export const CheckoutSchema = z.object({

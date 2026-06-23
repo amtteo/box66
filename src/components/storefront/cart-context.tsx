@@ -10,6 +10,11 @@ import {
 } from "react";
 
 import { CartAddedToaster } from "@/components/storefront/cart-added-toast";
+import {
+  loyaltyPointsHeld,
+  loyaltyRewardLineId,
+} from "@/lib/loyalty/cart";
+import type { LoyaltyRewardDTO } from "@/lib/loyalty/types";
 import type { CartChoice, CartLine, MenuItemDTO } from "@/lib/orders/types";
 
 /** Deterministický identifikátor riadka = položka menu + zvolené voľby. */
@@ -27,19 +32,28 @@ function readStoredCart(storageKey: string): CartLine[] {
     const raw = window.localStorage.getItem(storageKey);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as Partial<CartLine>[];
-    // Normalizácia (staršie košíky bez lineId/choices).
     return parsed
       .filter((l) => typeof l.menuItemId === "string")
       .map((l) => {
         const choices = Array.isArray(l.choices) ? (l.choices as CartChoice[]) : [];
+        const isLoyaltyReward = l.isLoyaltyReward === true;
         return {
-          lineId: l.lineId ?? computeLineId(l.menuItemId as string, choices),
+          lineId:
+            l.lineId ??
+            (isLoyaltyReward && l.loyaltyRewardId
+              ? loyaltyRewardLineId(l.loyaltyRewardId)
+              : computeLineId(l.menuItemId as string, choices)),
           menuItemId: l.menuItemId as string,
           name: l.name ?? "",
-          price: typeof l.price === "number" ? l.price : 0,
+          price: isLoyaltyReward ? 0 : typeof l.price === "number" ? l.price : 0,
           quantity: typeof l.quantity === "number" ? l.quantity : 1,
           imageUrl: l.imageUrl ?? null,
-          choices,
+          choices: isLoyaltyReward ? [] : choices,
+          ...(isLoyaltyReward && {
+            isLoyaltyReward: true,
+            loyaltyRewardId: l.loyaltyRewardId,
+            pointsCost: l.pointsCost,
+          }),
         };
       });
   } catch {
@@ -51,10 +65,14 @@ type CartContextValue = {
   lines: CartLine[];
   totalQuantity: number;
   subtotal: number;
+  /** Body držané v košíku (odmeny ešte neuplatnené). */
+  pointsHeld: number;
   add: (item: MenuItemDTO, choices?: CartChoice[]) => void;
+  addReward: (reward: LoyaltyRewardDTO) => void;
   setQuantity: (lineId: string, quantity: number) => void;
   remove: (lineId: string) => void;
   clear: () => void;
+  rewardQuantity: (rewardId: string) => number;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -67,7 +85,6 @@ export function CartProvider({
   children: React.ReactNode;
 }) {
   const storageKey = `box66_cart_${storeId}`;
-  // Lazy init z localStorage (na serveri []); persistencia cez efekt nižšie.
   const [lines, setLines] = useState<CartLine[]>(() =>
     readStoredCart(storageKey),
   );
@@ -106,6 +123,35 @@ export function CartProvider({
     });
   }, []);
 
+  const addReward = useCallback((reward: LoyaltyRewardDTO) => {
+    const lineId = loyaltyRewardLineId(reward.id);
+    setLines((prev) => {
+      const existing = prev.find((l) => l.lineId === lineId);
+      if (existing) {
+        return prev.map((l) =>
+          l.lineId === lineId
+            ? { ...l, quantity: Math.min(l.quantity + 1, 99) }
+            : l,
+        );
+      }
+      return [
+        ...prev,
+        {
+          lineId,
+          menuItemId: reward.menuItemId,
+          name: reward.name,
+          price: 0,
+          quantity: 1,
+          imageUrl: reward.imageUrl,
+          choices: [],
+          isLoyaltyReward: true,
+          loyaltyRewardId: reward.id,
+          pointsCost: reward.pointsCost,
+        },
+      ];
+    });
+  }, []);
+
   const setQuantity = useCallback((lineId: string, quantity: number) => {
     setLines((prev) => {
       if (quantity <= 0) return prev.filter((l) => l.lineId !== lineId);
@@ -123,11 +169,33 @@ export function CartProvider({
 
   const clear = useCallback(() => setLines([]), []);
 
+  const rewardQuantity = useCallback(
+    (rewardId: string) => {
+      const line = lines.find(
+        (l) => l.isLoyaltyReward && l.loyaltyRewardId === rewardId,
+      );
+      return line?.quantity ?? 0;
+    },
+    [lines],
+  );
+
   const value = useMemo<CartContextValue>(() => {
     const totalQuantity = lines.reduce((sum, l) => sum + l.quantity, 0);
     const subtotal = lines.reduce((sum, l) => sum + l.price * l.quantity, 0);
-    return { lines, totalQuantity, subtotal, add, setQuantity, remove, clear };
-  }, [lines, add, setQuantity, remove, clear]);
+    const pointsHeld = loyaltyPointsHeld(lines);
+    return {
+      lines,
+      totalQuantity,
+      subtotal,
+      pointsHeld,
+      add,
+      addReward,
+      setQuantity,
+      remove,
+      clear,
+      rewardQuantity,
+    };
+  }, [lines, add, addReward, setQuantity, remove, clear, rewardQuantity]);
 
   return (
     <CartContext.Provider value={value}>
