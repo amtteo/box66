@@ -52,7 +52,9 @@ export function MenuPriceEditor({
 
   if (effectivePrice == null) {
     return (
-      <p className="text-xs text-destructive">Chýba základná cena v katalógu</p>
+      <p className="border-t px-2.5 py-2 text-xs text-muted-foreground">
+        Vernostná odmena — nie na priamy predaj
+      </p>
     );
   }
 

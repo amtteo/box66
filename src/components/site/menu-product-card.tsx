@@ -3,10 +3,8 @@ import Image from "next/image";
 import { ImageIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import {
-  formatPresentationPrice,
-  type PresentationItem,
-} from "@/lib/menu/presentation";
+import { formatPresentationPrice } from "@/lib/menu/presentation-format";
+import type { PresentationItem } from "@/lib/menu/presentation";
 
 export function MenuProductCard({
   item,

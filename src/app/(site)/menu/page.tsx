@@ -11,6 +11,8 @@ export const metadata: Metadata = {
     "Objavte ponuku Box66 — burgre, prílohy, nápoje a ďalšie. Zloženie, alergény a energetické hodnoty pri každom jedle.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function MenuPage() {
   const store = await getDefaultStore();
   const categories = store ? await getPresentationMenu(store.id) : [];

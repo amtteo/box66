@@ -2,10 +2,8 @@ import Image from "next/image";
 import { Flame, ImageIcon, Wheat } from "lucide-react";
 
 import { ALLERGENS } from "@/lib/catalog/schemas";
-import {
-  formatPresentationPrice,
-  type PresentationItem,
-} from "@/lib/menu/presentation";
+import { formatPresentationPrice } from "@/lib/menu/presentation-format";
+import type { PresentationItem } from "@/lib/menu/presentation";
 import { IngredientCompositionStrip } from "@/components/site/ingredient-display";
 import { cn } from "@/lib/utils";
 

@@ -2,7 +2,6 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { resolveMenuItemPrice, toNumber } from "@/lib/pricing/resolve";
-import { formatMoney } from "@/lib/orders/types";
 
 /** Ingrediencia v zložení produktu (názov + voliteľný obrázok). */
 export type PresentationIngredient = {
@@ -223,15 +222,6 @@ export async function getPresentationProduct(
     categoryName: mi.product.category.name,
     related: siblings.map((s) => toItem(s as MenuItemWithProduct, multiplier)),
   };
-}
-
-/** Cena na prezentačnom menu; bez ceny = vernostná odmena (nie priamy predaj). */
-export function formatPresentationPrice(
-  price: number | null,
-  currency: string,
-): string {
-  if (price == null) return "Vernostná odmena";
-  return formatMoney(price, currency);
 }
 
 /** Kontaktné údaje predvolenej predajne pre footer / stránku Kontakt. */

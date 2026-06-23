@@ -18,6 +18,12 @@ import {
 
 const PATH = "/admin/menu";
 
+function revalidateStoreMenus() {
+  revalidatePath(PATH);
+  revalidatePath("/menu");
+  revalidatePath("/");
+}
+
 /** Priradí globálny produkt do menu predajne (iba superadmin). Cena sa berie z katalógu. */
 export async function addMenuItem(
   _prev: FormState,
@@ -61,7 +67,7 @@ export async function addMenuItem(
     return { ok: false, message: "Položku menu sa nepodarilo pridať." };
   }
 
-  revalidatePath(PATH);
+  revalidateStoreMenus();
   return { ok: true };
 }
 
@@ -96,7 +102,7 @@ export async function toggleMenuItemAvailability(
     return { ok: false, message: "Dostupnosť sa nepodarilo uložiť." };
   }
 
-  revalidatePath(PATH);
+  revalidateStoreMenus();
   return { ok: true };
 }
 
@@ -117,6 +123,6 @@ export async function removeMenuItem(menuItemId: string): Promise<FormState> {
     return { ok: false, message: "Položku menu sa nepodarilo odstrániť." };
   }
 
-  revalidatePath(PATH);
+  revalidateStoreMenus();
   return { ok: true };
 }

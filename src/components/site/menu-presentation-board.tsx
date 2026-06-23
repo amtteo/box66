@@ -7,10 +7,10 @@ import { ImageIcon, Hamburger } from "lucide-react";
 import { CategoryTab } from "@/components/storefront/category-tab";
 import { MenuProductDetail } from "@/components/site/menu-product-detail";
 import { cn } from "@/lib/utils";
-import {
-  formatPresentationPrice,
-  type PresentationCategory,
-  type PresentationItem,
+import { formatPresentationPrice } from "@/lib/menu/presentation-format";
+import type {
+  PresentationCategory,
+  PresentationItem,
 } from "@/lib/menu/presentation";
 
 function PresentationProductCard({
