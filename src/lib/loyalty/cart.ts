@@ -11,8 +11,15 @@ export function loyaltyPointsHeld(lines: CartLine[]): number {
   );
 }
 
-export function loyaltyRewardLineId(rewardId: string): string {
-  return `loyalty:${rewardId}`;
+export function loyaltyRewardLineId(
+  rewardId: string,
+  choices: { groupId: string; menuItemId: string }[] = [],
+): string {
+  const sig = [...choices]
+    .map((c) => `${c.groupId}:${c.menuItemId}`)
+    .sort()
+    .join(",");
+  return sig ? `loyalty:${rewardId}#${sig}` : `loyalty:${rewardId}`;
 }
 
 /** Subtotal platených položiek (bez vernostných odmien). */

@@ -35,6 +35,7 @@ import { FieldError, FormMessage } from "@/components/admin/form-feedback";
 import { CartSignInBanner } from "@/components/storefront/cart-sign-in-banner";
 import { showCartAddedToast } from "@/components/storefront/cart-added-toast";
 import { LoyaltyRewardsPanel } from "@/components/storefront/loyalty-rewards-panel";
+import { LoyaltyRewardChoiceDialog } from "@/components/storefront/loyalty-reward-choice-dialog";
 import { useStorefront } from "@/components/storefront/storefront-context";
 import { useCart } from "@/components/storefront/cart-context";
 import { fetchStoreLoyalty } from "@/lib/loyalty/storefront";
@@ -53,7 +54,7 @@ import {
   PAYMENT_STATUS_LABEL,
 } from "@/lib/orders/schemas";
 import { OrderType, PaymentMethod } from "@/generated/prisma/enums";
-import { formatMoney, type CartLine } from "@/lib/orders/types";
+import { formatMoney, type CartChoice, type CartLine } from "@/lib/orders/types";
 import { formatDeliveryDuration } from "@/lib/delivery/format";
 
 type View = "cart" | "rewards" | "checkout" | "payment" | "success";
@@ -109,6 +110,9 @@ export function CartSheet({
   const [loyaltyBalance, setLoyaltyBalance] =
     useState<LoyaltyBalanceDTO | null>(null);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+  const [rewardChoice, setRewardChoice] = useState<LoyaltyRewardDTO | null>(
+    null,
+  );
 
   const loyaltyBalanceWithHold = useMemo(() => {
     if (!loyaltyBalance) return null;
@@ -142,8 +146,19 @@ export function CartSheet({
       toast.error("Nemáš dostatok bodov.");
       return;
     }
+    if (reward.choiceGroups.length > 0) {
+      setRewardChoice(reward);
+      return;
+    }
     addReward(reward);
     showCartAddedToast(reward.name);
+  }
+
+  function handleConfirmRewardChoice(choices: CartChoice[]) {
+    if (!rewardChoice) return;
+    addReward(rewardChoice, choices);
+    showCartAddedToast(rewardChoice.name);
+    setRewardChoice(null);
   }
 
   function handleSetQuantity(lineId: string, quantity: number) {
@@ -278,6 +293,11 @@ export function CartSheet({
 
   return (
     <>
+      <LoyaltyRewardChoiceDialog
+        reward={rewardChoice}
+        onClose={() => setRewardChoice(null)}
+        onConfirm={handleConfirmRewardChoice}
+      />
       <Sheet open={open} onOpenChange={resetOnClose}>
       <SheetTrigger asChild>
         <Button
@@ -711,6 +731,9 @@ function CartView({
               {isReward ? (
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   {line.pointsCost! * line.quantity} bodov
+                  {line.choices.length > 0
+                    ? ` · ${line.choices.map((c) => c.name).join(", ")}`
+                    : ""}
                 </p>
               ) : line.choices.length > 0 ? (
                 <p className="mt-0.5 text-sm text-muted-foreground">

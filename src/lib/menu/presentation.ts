@@ -128,7 +128,11 @@ export async function getPresentationMenu(
       select: { priceCoefficient: { select: { multiplier: true } } },
     }),
     prisma.menuItem.findMany({
-      where: { storeId, isAvailable: true, product: { isActive: true } },
+      where: {
+        storeId,
+        isAvailable: true,
+        product: { isActive: true, isComboOption: false },
+      },
       orderBy: [
         { product: { category: { sortOrder: "asc" } } },
         { sortOrder: "asc" },

@@ -42,6 +42,7 @@ export async function saveLoyaltyReward(
     select: {
       id: true,
       isActive: true,
+      basePrice: true,
       _count: { select: { choiceGroups: true } },
       loyaltyReward: { select: { id: true } },
     },
@@ -53,10 +54,11 @@ export async function saveLoyaltyReward(
       values: rawValues(formData),
     };
   }
-  if (product._count.choiceGroups > 0) {
+  if (product._count.choiceGroups > 0 && product.basePrice != null) {
     return {
       ok: false,
-      message: "Kombo produkt nemôže byť odmenou.",
+      message:
+        "Platené kombo menu nemôže byť odmenou. Použi produkt bez ceny (napr. merch).",
       values: rawValues(formData),
     };
   }

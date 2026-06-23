@@ -41,19 +41,19 @@ function readStoredCart(storageKey: string): CartLine[] {
           lineId:
             l.lineId ??
             (isLoyaltyReward && l.loyaltyRewardId
-              ? loyaltyRewardLineId(l.loyaltyRewardId)
+              ? loyaltyRewardLineId(l.loyaltyRewardId, choices)
               : computeLineId(l.menuItemId as string, choices)),
           menuItemId: l.menuItemId as string,
           name: l.name ?? "",
           price: isLoyaltyReward ? 0 : typeof l.price === "number" ? l.price : 0,
           quantity: typeof l.quantity === "number" ? l.quantity : 1,
           imageUrl: l.imageUrl ?? null,
-          choices: isLoyaltyReward ? [] : choices,
           ...(isLoyaltyReward && {
             isLoyaltyReward: true,
             loyaltyRewardId: l.loyaltyRewardId,
             pointsCost: l.pointsCost,
           }),
+          choices,
         };
       });
   } catch {
@@ -68,7 +68,7 @@ type CartContextValue = {
   /** Body držané v košíku (odmeny ešte neuplatnené). */
   pointsHeld: number;
   add: (item: MenuItemDTO, choices?: CartChoice[]) => void;
-  addReward: (reward: LoyaltyRewardDTO) => void;
+  addReward: (reward: LoyaltyRewardDTO, choices?: CartChoice[]) => void;
   setQuantity: (lineId: string, quantity: number) => void;
   remove: (lineId: string) => void;
   clear: () => void;
@@ -123,34 +123,37 @@ export function CartProvider({
     });
   }, []);
 
-  const addReward = useCallback((reward: LoyaltyRewardDTO) => {
-    const lineId = loyaltyRewardLineId(reward.id);
-    setLines((prev) => {
-      const existing = prev.find((l) => l.lineId === lineId);
-      if (existing) {
-        return prev.map((l) =>
-          l.lineId === lineId
-            ? { ...l, quantity: Math.min(l.quantity + 1, 99) }
-            : l,
-        );
-      }
-      return [
-        ...prev,
-        {
-          lineId,
-          menuItemId: reward.menuItemId,
-          name: reward.name,
-          price: 0,
-          quantity: 1,
-          imageUrl: reward.imageUrl,
-          choices: [],
-          isLoyaltyReward: true,
-          loyaltyRewardId: reward.id,
-          pointsCost: reward.pointsCost,
-        },
-      ];
-    });
-  }, []);
+  const addReward = useCallback(
+    (reward: LoyaltyRewardDTO, choices: CartChoice[] = []) => {
+      const lineId = loyaltyRewardLineId(reward.id, choices);
+      setLines((prev) => {
+        const existing = prev.find((l) => l.lineId === lineId);
+        if (existing) {
+          return prev.map((l) =>
+            l.lineId === lineId
+              ? { ...l, quantity: Math.min(l.quantity + 1, 99) }
+              : l,
+          );
+        }
+        return [
+          ...prev,
+          {
+            lineId,
+            menuItemId: reward.menuItemId,
+            name: reward.name,
+            price: 0,
+            quantity: 1,
+            imageUrl: reward.imageUrl,
+            choices,
+            isLoyaltyReward: true,
+            loyaltyRewardId: reward.id,
+            pointsCost: reward.pointsCost,
+          },
+        ];
+      });
+    },
+    [],
+  );
 
   const setQuantity = useCallback((lineId: string, quantity: number) => {
     setLines((prev) => {
@@ -170,12 +173,10 @@ export function CartProvider({
   const clear = useCallback(() => setLines([]), []);
 
   const rewardQuantity = useCallback(
-    (rewardId: string) => {
-      const line = lines.find(
-        (l) => l.isLoyaltyReward && l.loyaltyRewardId === rewardId,
-      );
-      return line?.quantity ?? 0;
-    },
+    (rewardId: string) =>
+      lines
+        .filter((l) => l.isLoyaltyReward && l.loyaltyRewardId === rewardId)
+        .reduce((sum, l) => sum + l.quantity, 0),
     [lines],
   );
 

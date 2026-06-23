@@ -1,3 +1,5 @@
+import type { MenuChoiceGroupDTO } from "@/lib/orders/types";
+
 /** Odmena pre storefront (fáza 2+). */
 export type LoyaltyRewardDTO = {
   id: string;
@@ -6,6 +8,8 @@ export type LoyaltyRewardDTO = {
   name: string;
   imageUrl: string | null;
   pointsCost: number;
+  /** Skupiny výberu (napr. veľkosť trička) — ak nie sú prázdne, treba vybrať pred pridaním. */
+  choiceGroups: MenuChoiceGroupDTO[];
 };
 
 export type LoyaltyBalanceDTO = {

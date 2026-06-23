@@ -74,15 +74,6 @@ export const CartItemSchema = z
     choices: z.array(CartChoiceSchema).max(50).default([]),
     /** Vernostná odmena — cena 0 €, body sa odpočítajú pri objednávke. */
     loyaltyRewardId: z.uuid().optional(),
-  })
-  .superRefine((item, ctx) => {
-    if (item.loyaltyRewardId && item.choices.length > 0) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Odmena nemôže mať výber komba.",
-        path: ["choices"],
-      });
-    }
   });
 
 /** Payload checkoutu z úvodnej stránky (objednávka hosťa alebo prihláseného). */

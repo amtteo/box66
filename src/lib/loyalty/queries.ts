@@ -3,6 +3,48 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { LOYALTY_MAX_GRID_ITEMS } from "@/lib/loyalty/constants";
 import type { LoyaltyRewardDTO } from "@/lib/loyalty/types";
+import type { MenuChoiceOptionDTO } from "@/lib/orders/types";
+
+/** Možnosti výberu z pool kategórií dostupné v predajni. */
+export async function loadStoreChoiceOptions(
+  storeId: string,
+  poolCategoryIds: string[],
+): Promise<Map<string, MenuChoiceOptionDTO[]>> {
+  const optionsByCategory = new Map<string, MenuChoiceOptionDTO[]>();
+  if (poolCategoryIds.length === 0) return optionsByCategory;
+
+  const optionItems = await prisma.menuItem.findMany({
+    where: {
+      storeId,
+      isAvailable: true,
+      product: {
+        isActive: true,
+        isComboOption: true,
+        categoryId: { in: poolCategoryIds },
+      },
+    },
+    orderBy: [{ sortOrder: "asc" }, { product: { name: "asc" } }],
+    select: {
+      id: true,
+      product: {
+        select: { id: true, name: true, categoryId: true, imageUrl: true },
+      },
+    },
+  });
+
+  for (const oi of optionItems) {
+    const list = optionsByCategory.get(oi.product.categoryId) ?? [];
+    list.push({
+      menuItemId: oi.id,
+      productId: oi.product.id,
+      name: oi.product.name,
+      imageUrl: oi.product.imageUrl,
+    });
+    optionsByCategory.set(oi.product.categoryId, list);
+  }
+
+  return optionsByCategory;
+}
 
 /** Všetky odmeny pre admin (zoradené). */
 export async function getLoyaltyRewards() {
@@ -23,15 +65,11 @@ export async function getLoyaltyRewards() {
   });
 }
 
-/**
- * Produkty vhodné ako odmena — aktívne, bez komba (žiadne choiceGroups),
- * ešte nie sú priradené ako odmena (okrem `excludeProductId` pri editácii).
- */
+/** Produkty vhodné ako odmena — ešte nie sú priradené ako odmena. */
 export async function getLoyaltyRewardProductOptions(excludeProductId?: string) {
   return prisma.product.findMany({
     where: {
       isActive: true,
-      choiceGroups: { none: {} },
       ...(excludeProductId
         ? {
             OR: [{ loyaltyReward: null }, { id: excludeProductId }],
@@ -53,7 +91,6 @@ export async function getLoyaltyRewardProductOptions(excludeProductId?: string) 
 
 /**
  * Aktívne odmeny dostupné v konkrétnej predajni (pre storefront).
- * Skryté: neaktívna odmena, neaktívny produkt, kombo, nedostupné menu.
  */
 export async function getStoreLoyaltyRewards(
   storeId: string,
@@ -63,7 +100,6 @@ export async function getStoreLoyaltyRewards(
       isActive: true,
       product: {
         isActive: true,
-        choiceGroups: { none: {} },
         menuItems: {
           some: { storeId, isAvailable: true },
         },
@@ -79,6 +115,16 @@ export async function getStoreLoyaltyRewards(
           id: true,
           name: true,
           imageUrl: true,
+          choiceGroups: {
+            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+            select: {
+              id: true,
+              label: true,
+              minSelect: true,
+              maxSelect: true,
+              categoryId: true,
+            },
+          },
           menuItems: {
             where: { storeId, isAvailable: true },
             take: 1,
@@ -89,6 +135,16 @@ export async function getStoreLoyaltyRewards(
     },
   });
 
+  const poolCategoryIds = [
+    ...new Set(
+      rewards.flatMap((r) => r.product.choiceGroups.map((g) => g.categoryId)),
+    ),
+  ];
+  const optionsByCategory = await loadStoreChoiceOptions(
+    storeId,
+    poolCategoryIds,
+  );
+
   return rewards
     .filter((r) => r.product.menuItems[0])
     .map((r) => ({
@@ -98,6 +154,15 @@ export async function getStoreLoyaltyRewards(
       name: r.product.name,
       imageUrl: r.product.imageUrl,
       pointsCost: r.pointsCost,
+      choiceGroups: r.product.choiceGroups
+        .map((g) => ({
+          id: g.id,
+          label: g.label,
+          minSelect: g.minSelect,
+          maxSelect: g.maxSelect,
+          options: optionsByCategory.get(g.categoryId) ?? [],
+        }))
+        .filter((g) => g.options.length > 0),
     }));
 }
 

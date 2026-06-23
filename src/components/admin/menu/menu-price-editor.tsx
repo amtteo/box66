@@ -53,7 +53,7 @@ export function MenuPriceEditor({
   if (effectivePrice == null) {
     return (
       <p className="border-t px-2.5 py-2 text-xs text-muted-foreground">
-        Vernostná odmena — nie na priamy predaj
+        Vernostná odmena
       </p>
     );
   }

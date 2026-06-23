@@ -29,6 +29,10 @@ import {
   validateLoyaltyCheckout,
 } from "@/lib/loyalty/checkout";
 import {
+  resolveCartChoices,
+  type ResolvedOrderChoice,
+} from "@/lib/orders/resolve-choices";
+import {
   InsufficientLoyaltyPointsError,
   redeemLoyaltyPoints,
 } from "@/lib/loyalty/ledger";
@@ -180,13 +184,7 @@ export async function placeOrder(
     }
   }
 
-  type ResolvedChoice = {
-    groupId: string;
-    groupLabel: string;
-    productId: string;
-    menuItemId: string;
-    nameSnapshot: string;
-  };
+  type ResolvedChoice = ResolvedOrderChoice;
   type BuiltOrderLine = {
     menuItemId: string;
     productId: string;
@@ -219,53 +217,17 @@ export async function placeOrder(
       };
     }
 
-    // Skupiny výberu, ktoré majú v tejto predajni aspoň jednu možnosť.
-    const effectiveGroups = mi.product.choiceGroups.filter(
-      (g) => (optionIdsByCategory.get(g.categoryId)?.size ?? 0) > 0,
-    );
-    const groupById = new Map(effectiveGroups.map((g) => [g.id, g]));
-
-    // Spočítaj voľby podľa skupín a over platnosť každej voľby.
-    const choicesByGroup = new Map<string, ResolvedChoice[]>();
-    for (const ch of item.choices) {
-      const group = groupById.get(ch.groupId);
-      if (!group) {
-        return {
-          ok: false,
-          message: "Neplatný výber pri položke. Obnov stránku a skús to znova.",
-        };
-      }
-      const validIds = optionIdsByCategory.get(group.categoryId);
-      const opt = optionByMenuItemId.get(ch.menuItemId);
-      if (!validIds?.has(ch.menuItemId) || !opt) {
-        return {
-          ok: false,
-          message: "Zvolená možnosť už nie je dostupná. Obnov stránku.",
-        };
-      }
-      const list = choicesByGroup.get(group.id) ?? [];
-      list.push({
-        groupId: group.id,
-        groupLabel: group.label,
-        productId: opt.productId,
-        menuItemId: ch.menuItemId,
-        nameSnapshot: opt.name,
-      });
-      choicesByGroup.set(group.id, list);
+    const resolvedChoicesResult = resolveCartChoices({
+      productName: mi.product.name,
+      choiceGroups: mi.product.choiceGroups,
+      clientChoices: item.choices,
+      optionByMenuItemId,
+      optionIdsByCategory,
+    });
+    if (!resolvedChoicesResult.ok) {
+      return { ok: false, message: resolvedChoicesResult.message };
     }
-
-    // Over min/max pre každú povinnú skupinu.
-    for (const group of effectiveGroups) {
-      const count = choicesByGroup.get(group.id)?.length ?? 0;
-      if (count < group.minSelect || count > group.maxSelect) {
-        return {
-          ok: false,
-          message: `Pri „${mi.product.name}" treba dokončiť výber „${group.label}".`,
-        };
-      }
-    }
-
-    const resolvedChoices = [...choicesByGroup.values()].flat();
+    const resolvedChoices = resolvedChoicesResult.choices;
     const unitPrice = resolveMenuItemPrice({
       basePrice: toNumber(mi.product.basePrice),
       multiplier: priceMultiplier,
@@ -289,11 +251,17 @@ export async function placeOrder(
     });
   }
 
+  const choiceCtx = { optionByMenuItemId, optionIdsByCategory };
+
   for (const item of loyaltyCartItems) {
-    const resolved = await resolveLoyaltyCartItem(store.id, {
-      ...item,
-      loyaltyRewardId: item.loyaltyRewardId!,
-    });
+    const resolved = await resolveLoyaltyCartItem(
+      store.id,
+      {
+        ...item,
+        loyaltyRewardId: item.loyaltyRewardId!,
+      },
+      choiceCtx,
+    );
     if ("error" in resolved) {
       return { ok: false, message: resolved.error };
     }
@@ -305,7 +273,7 @@ export async function placeOrder(
       quantity: resolved.quantity,
       lineTotal: 0,
       note: item.note ?? null,
-      choices: [],
+      choices: resolved.choices,
       isLoyaltyReward: true,
       pointsRedeemed: resolved.pointsRedeemed,
       loyaltyRewardId: resolved.loyaltyRewardId,
