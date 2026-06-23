@@ -40,11 +40,7 @@ export function LoyaltyRewardsPanel({
   return (
     <div className="space-y-6">
       {isAuthed ? (
-        <PointsBanner
-          balance={balance?.balance ?? 0}
-          pointsHeld={pointsHeld}
-          available={available}
-        />
+        <PointsHeader balance={balance?.balance ?? 0} />
       ) : (
         <CartSignInBanner onSuccess={onSignInSuccess} />
       )}
@@ -58,47 +54,56 @@ export function LoyaltyRewardsPanel({
           </p>
         </div>
       ) : (
-        <ul className="grid grid-cols-3 gap-3">
-          {rewards.map((reward) => {
-            const inCart = rewardQuantity(reward.id);
-            const affordable =
-              isAuthed && available >= reward.pointsCost;
-            return (
-              <RewardCard
-                key={reward.id}
-                reward={reward}
-                affordable={affordable}
-                inCart={inCart}
-                disabled={!isAuthed || !affordable}
-                onSelect={() => onSelectReward(reward)}
-              />
-            );
-          })}
-        </ul>
+        <>
+          <ul className="grid grid-cols-3 gap-3">
+            {rewards.map((reward) => {
+              const inCart = rewardQuantity(reward.id);
+              const affordable =
+                isAuthed && available >= reward.pointsCost;
+              return (
+                <RewardCard
+                  key={reward.id}
+                  reward={reward}
+                  affordable={affordable}
+                  inCart={inCart}
+                  disabled={!isAuthed || !affordable}
+                  onSelect={() => onSelectReward(reward)}
+                />
+              );
+            })}
+          </ul>
+        </>
       )}
     </div>
   );
 }
 
-function PointsBanner({
-  balance,
+function PointsHeader({ balance }: { balance: number }) {
+  return (
+    <div>
+      <p className="text-sm text-muted-foreground">Počet bodov</p>
+      <p className="text-4xl font-bold tabular-nums">{balance}</p>
+    </div>
+  );
+}
+
+export function LoyaltySelectedSummary({
+  selectedCount,
   pointsHeld,
-  available,
 }: {
-  balance: number;
+  selectedCount: number;
   pointsHeld: number;
-  available: number;
 }) {
   return (
-    <div className="rounded-lg border-2 border-primary bg-yellow-400 px-4 py-3 text-center">
-      <p className="text-sm font-medium text-primary/80">Tvoje body</p>
-      <p className="text-3xl font-bold tabular-nums text-primary">{balance}</p>
-      {pointsHeld > 0 && (
-        <p className="mt-1 text-sm text-primary/80">
-          V košíku: {pointsHeld} · Dostupné:{" "}
-          <span className="font-semibold tabular-nums">{available}</span>
-        </p>
-      )}
+    <div className="flex items-end justify-between gap-4">
+      <div>
+        <p className="text-sm font-medium">Počet ks</p>
+        <p className="text-lg font-bold tabular-nums">{selectedCount}</p>
+      </div>
+      <div className="text-right">
+        <p className="text-sm font-medium">Počet bodov</p>
+        <p className="text-lg font-bold tabular-nums">{pointsHeld}</p>
+      </div>
     </div>
   );
 }
@@ -130,13 +135,13 @@ function RewardCard({
         )}
       >
         {inCart > 0 && (
-          <span className="absolute right-1 top-1 z-10 flex size-5 items-center justify-center rounded-full bg-primary text-white">
+          <span className="absolute right-1 top-1 z-10 flex size-7 items-center justify-center rounded-full bg-green-400 text-white">
             {inCart > 1 ? (
-              <span className="text-[10px] font-bold tabular-nums">
+              <span className="text-xs font-bold tabular-nums">
                 {inCart}
               </span>
             ) : (
-              <Check className="size-3" strokeWidth={3} />
+              <Check className="size-4" strokeWidth={3} />
             )}
           </span>
         )}

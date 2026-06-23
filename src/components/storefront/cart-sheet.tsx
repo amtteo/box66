@@ -6,8 +6,6 @@ import { toast } from "sonner";
 import {
   ArrowLeft,
   CheckCircle2,
-  ChevronDown,
-  ChevronUp,
   CreditCard,
   Gift,
   ImageIcon,
@@ -16,6 +14,7 @@ import {
   ShoppingCart,
   Trash2,
   User,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import Image from "next/image";
@@ -36,7 +35,7 @@ import {
 import { FieldError, FormMessage } from "@/components/admin/form-feedback";
 import { CartSignInBanner } from "@/components/storefront/cart-sign-in-banner";
 import { showCartAddedToast } from "@/components/storefront/cart-added-toast";
-import { LoyaltyRewardsPanel } from "@/components/storefront/loyalty-rewards-panel";
+import { LoyaltyRewardsPanel, LoyaltySelectedSummary } from "@/components/storefront/loyalty-rewards-panel";
 import { LoyaltyRewardChoiceDialog } from "@/components/storefront/loyalty-reward-choice-dialog";
 import { useStorefront } from "@/components/storefront/storefront-context";
 import { useCart } from "@/components/storefront/cart-context";
@@ -123,6 +122,15 @@ export function CartSheet({
       available: Math.max(0, loyaltyBalance.balance - pointsHeld),
     };
   }, [loyaltyBalance, pointsHeld]);
+
+  const selectedRewardCount = useMemo(
+    () =>
+      loyaltyRewards.reduce(
+        (sum, reward) => sum + rewardQuantity(reward.id),
+        0,
+      ),
+    [loyaltyRewards, rewardQuantity],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -357,34 +365,27 @@ export function CartSheet({
                 </Button>
               )}
               <SheetTitle className="text-lg">
-                {(view === "cart" || view === "rewards") && "Košík"}
+                {view === "rewards" && "Odmeny"}
+                {view === "cart" && "Košík"}
                 {view === "checkout" && "Údaje a platba"}
                 {view === "payment" && "Platba kartou"}
                 {view === "success" && "Objednávka prijatá"}
               </SheetTitle>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              {(view === "cart" || view === "rewards") && (
+              {view === "rewards" ? (
                 <Button
                   variant="ghost"
-                  className={cn(
-                    "gap-1.5 text-lg font-semibold",
-                    view === "rewards" && "bg-yellow-400 hover:bg-yellow-500",
-                  )}
-                  onClick={() =>
-                    setView(view === "rewards" ? "cart" : "rewards")
-                  }
-                  aria-pressed={view === "rewards"}
+                  size="icon"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-foreground bg-background hover:bg-accent"
+                  onClick={() => setView("cart")}
+                  aria-label="Späť do košíka"
                 >
-                  Odmeny
-                  {view === "rewards" ? (
-                    <ChevronUp className="size-5" />
-                  ) : (
-                    <ChevronDown className="size-5" />
-                  )}
+                  <X className="size-5" />
                 </Button>
+              ) : (
+                <SheetCloseButton />
               )}
-              <SheetCloseButton />
             </div>
           </div>
         </SheetHeader>
@@ -412,6 +413,7 @@ export function CartSheet({
                 pointsHeld={pointsHeld}
                 setQuantity={handleSetQuantity}
                 remove={remove}
+                onOpenRewards={() => setView("rewards")}
                 deliveryFee={
                   fulfillmentMode === "delivery" && delivery.fee != null
                     ? delivery.fee
@@ -570,9 +572,12 @@ export function CartSheet({
           <div className="border-t-2 border-primary bg-yellow-400">
             <div className="mx-auto w-full max-w-2xl space-y-2 p-4">
               <div className="flex items-center justify-between gap-4">
-              {view === "rewards" ? (
-                <div />
-              ) : view !== "success" ? (
+              {view === "rewards" && signedIn ? (
+                <LoyaltySelectedSummary
+                  selectedCount={selectedRewardCount}
+                  pointsHeld={pointsHeld}
+                />
+              ) : view !== "success" && view !== "rewards" ? (
                 <div className="flex items-baseline gap-3">
                   <span className="text-xl font-bold">Spolu</span>
                   <span className="text-2xl font-bold tabular-nums">
@@ -589,7 +594,7 @@ export function CartSheet({
                   size="lg"
                   onClick={() => setView("cart")}
                 >
-                  Pokračovať v nákupe
+                  Pokračovať
                 </Button>
               )}
 
@@ -666,6 +671,7 @@ function CartView({
   pointsHeld,
   setQuantity,
   remove,
+  onOpenRewards,
   deliveryFee,
   deliveryAddress,
   deliveryDistanceKm,
@@ -678,23 +684,25 @@ function CartView({
   pointsHeld: number;
   setQuantity: (lineId: string, quantity: number) => void;
   remove: (lineId: string) => void;
+  onOpenRewards: () => void;
   deliveryFee: number | null;
   deliveryAddress: string | null;
   deliveryDistanceKm: number | null;
   deliveryDurationMinutes: number | null;
   deliveryError: string | null;
 }) {
-  if (lines.length === 0 && deliveryFee == null) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-16 text-center font-bold">
-        <ShoppingCart className="size-10" />
-        <p className="text-2xl mt-6">Košík je prázdny</p>
-      </div>
-    );
-  }
+  const isEmpty = lines.length === 0 && deliveryFee == null;
 
   return (
     <ul className="">
+      <AddRewardRow onOpen={onOpenRewards} />
+      {isEmpty ? (
+        <li className="flex flex-col items-center gap-3 py-16 text-center font-bold">
+          <ShoppingCart className="size-10" />
+          <p className="mt-6 text-2xl">Košík je prázdny</p>
+        </li>
+      ) : (
+        <>
       {lines.map((line) => {
         const isReward = line.isLoyaltyReward && line.pointsCost;
         const otherHeld = isReward
@@ -830,7 +838,36 @@ function CartView({
           </div>
         </li>
       )}
+        </>
+      )}
     </ul>
+  );
+}
+
+function AddRewardRow({ onOpen }: { onOpen: () => void }) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex w-full gap-4 py-4 text-left border-b-2 border-primary"
+      >
+        <div className="relative size-20 shrink-0 overflow-hidden border-2 border-primary">
+          <div className="flex size-full items-center justify-center">
+            <Gift className="size-7 text-muted-foreground" />
+          </div>
+        </div>
+
+        <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+          <p className="min-w-0 flex-1 text-lg font-semibold leading-snug">
+            Pridaj odmenu
+          </p>
+          <span className="flex size-10 shrink-0 items-center justify-center">
+            <Plus className="size-6" />
+          </span>
+        </div>
+      </button>
+    </li>
   );
 }
 
