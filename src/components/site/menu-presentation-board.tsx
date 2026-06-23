@@ -33,13 +33,13 @@ function PresentationProductCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "group flex w-full flex-col overflow-hidden border-y-2 border-t-transparent border-b-transparent text-left transition-colors",
+        "group flex w-full flex-col overflow-hidden border-y-2 border-t-transparent border-b-transparent text-left transition-colors p-4",
         isActive
           ? cn("border-b-primary", !isFirst && "border-t-primary")
           : undefined,
       )}
     >
-      <div className="relative aspect-[4/3] w-full">
+      <div className="relative aspect-[4/4] w-full">
         {item.imageUrl ? (
           <Image
             src={item.imageUrl}
@@ -55,7 +55,7 @@ function PresentationProductCard({
         )}
       </div>
       <div className="flex flex-col items-center gap-0.5 px-2 py-2 text-center">
-        <span className="line-clamp-2 text-sm font-medium leading-tight">
+        <span className="line-clamp-2 text-xl  font-bold leading-tight">
           {item.name}
         </span>
         <span className="text-sm font-semibold tabular-nums">
@@ -173,7 +173,7 @@ export function MenuPresentationBoard({
 
         {activeCategory && (
           <div className="flex min-h-0 flex-1">
-            <aside className="flex w-[108px] shrink-0 flex-col overflow-y-auto border-r-2 border-primary">
+            <aside className="flex w-[108px] shrink-0 flex-col overflow-y-auto border-r-2 border-primary pt-4">
               <ProductList
                 items={activeCategory.items}
                 currency={currency}

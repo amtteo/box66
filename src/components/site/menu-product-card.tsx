@@ -18,7 +18,7 @@ export function MenuProductCard({
       href={`/menu/${item.slug}`}
       className="group flex flex-col overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md"
     >
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+      <div className="relative aspect-[4/3] w-full overflow-hidden">
         {item.imageUrl ? (
           <Image
             src={item.imageUrl}
@@ -35,10 +35,10 @@ export function MenuProductCard({
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-medium leading-tight group-hover:underline">
+          <h3 className="font-bold leading-tight group-hover:underline">
             {item.name}
           </h3>
-          <span className="shrink-0 font-semibold tabular-nums">
+          <span className="shrink-0 font-bold text-md tabular-nums">
             {formatPresentationPrice(item.price, currency)}
           </span>
         </div>

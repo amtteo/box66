@@ -27,8 +27,8 @@ export function MenuProductDetail({
   );
 
   return (
-    <div className={cn("flex flex-col overflow-y-auto", className)}>
-      <div className="relative aspect-[4/3] w-full">
+    <div className={cn("flex flex-col overflow-y-auto p-4", className)}>
+      <div className="relative aspect-[4/4] w-full">
         {product.imageUrl ? (
           <Image
             src={product.imageUrl}
@@ -48,7 +48,7 @@ export function MenuProductDetail({
         <div>
           <h1
             className={cn(
-              "font-semibold tracking-tight",
+              "font-bold tracking-tight",
               compact ? "text-xl" : "text-3xl sm:text-4xl",
             )}
           >
@@ -57,7 +57,7 @@ export function MenuProductDetail({
           <p
             className={cn(
               "mt-1 font-semibold tabular-nums",
-              compact ? "text-lg" : "text-2xl",
+              compact ? "text-md" : "text-xl",
             )}
           >
             {formatPresentationPrice(product.price, currency)}
