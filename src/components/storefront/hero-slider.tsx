@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
@@ -13,23 +13,89 @@ const HERO_SLIDES = [
 ] as const;
 
 const SLIDE_INTERVAL_MS = 5000;
+const SWIPE_THRESHOLD_PX = 48;
 
 export function HeroSlider({ onOrder }: { onOrder: () => void }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const pointerStartX = useRef<number | null>(null);
+  const intervalRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    const id = window.setInterval(() => {
+  const goToIndex = useCallback((index: number) => {
+    setActiveIndex(
+      ((index % HERO_SLIDES.length) + HERO_SLIDES.length) % HERO_SLIDES.length,
+    );
+  }, []);
+
+  const restartAutoplay = useCallback(() => {
+    if (intervalRef.current !== null) {
+      window.clearInterval(intervalRef.current);
+    }
+    intervalRef.current = window.setInterval(() => {
       setActiveIndex((i) => (i + 1) % HERO_SLIDES.length);
     }, SLIDE_INTERVAL_MS);
-    return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    restartAutoplay();
+    return () => {
+      if (intervalRef.current !== null) {
+        window.clearInterval(intervalRef.current);
+      }
+    };
+  }, [restartAutoplay]);
+
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.button !== 0) return;
+    pointerStartX.current = e.clientX;
+    setIsDragging(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (pointerStartX.current === null) return;
+    setDragOffset(e.clientX - pointerStartX.current);
+  }
+
+  function finishPointer(e: React.PointerEvent<HTMLDivElement>) {
+    if (pointerStartX.current === null) return;
+
+    const delta = e.clientX - pointerStartX.current;
+    if (delta < -SWIPE_THRESHOLD_PX) {
+      goToIndex(activeIndex + 1);
+      restartAutoplay();
+    } else if (delta > SWIPE_THRESHOLD_PX) {
+      goToIndex(activeIndex - 1);
+      restartAutoplay();
+    }
+
+    pointerStartX.current = null;
+    setDragOffset(0);
+    setIsDragging(false);
+
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  }
 
   return (
     <div className="pb-4 pt-0 sm:py-4" aria-label="Úvodný slider">
       <div className="relative w-full overflow-hidden border-2 border-primary">
         <div
-          className="flex transition-transform duration-500 ease-in-out"
-          style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+          className={cn(
+            "flex touch-pan-y select-none",
+            isDragging
+              ? "cursor-grabbing transition-none"
+              : "cursor-grab transition-transform duration-500 ease-in-out",
+          )}
+          style={{
+            transform: `translateX(calc(-${activeIndex * 100}% + ${dragOffset}px))`,
+          }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={finishPointer}
+          onPointerCancel={finishPointer}
         >
           {HERO_SLIDES.map((slide, index) => (
             <div key={slide.desktop} className="w-full shrink-0">
@@ -62,7 +128,10 @@ export function HeroSlider({ onOrder }: { onOrder: () => void }) {
               type="button"
               aria-label={`Snímka ${index + 1}`}
               aria-current={index === activeIndex}
-              onClick={() => setActiveIndex(index)}
+              onClick={() => {
+                setActiveIndex(index);
+                restartAutoplay();
+              }}
               className={cn(
                 "size-2.5 rounded-full border-2 border-primary transition-colors",
                 index === activeIndex ? "bg-primary" : "bg-white",
