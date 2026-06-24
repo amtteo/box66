@@ -85,8 +85,9 @@ export function LoyaltyRewardChoiceDialog({
   return (
     <Dialog open={!!reward} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        className="max-h-[90vh] overflow-y-auto p-8 sm:max-w-lg"
+        className="z-[60] max-h-[90vh] overflow-y-auto p-8 sm:max-w-lg"
         circleCloseButton
+        overlayClassName="z-[60]"
       >
         <DialogHeader>
           <DialogTitle>{reward?.name}</DialogTitle>

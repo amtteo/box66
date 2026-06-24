@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -114,6 +114,7 @@ export function CartSheet({
   const [rewardChoice, setRewardChoice] = useState<LoyaltyRewardDTO | null>(
     null,
   );
+  const suppressSheetCloseRef = useRef(false);
 
   const loyaltyBalanceWithHold = useMemo(() => {
     if (!loyaltyBalance) return null;
@@ -147,6 +148,14 @@ export function CartSheet({
     };
   }, [open, storeId, signedIn]);
 
+  function closeRewardChoiceDialog() {
+    suppressSheetCloseRef.current = true;
+    setRewardChoice(null);
+    window.setTimeout(() => {
+      suppressSheetCloseRef.current = false;
+    }, 150);
+  }
+
   function handleAddReward(reward: LoyaltyRewardDTO) {
     if (!signedIn || !loyaltyBalance) {
       toast.error("Pre uplatnenie odmien sa prihlás.");
@@ -178,7 +187,23 @@ export function CartSheet({
     if (!rewardChoice) return;
     addReward(rewardChoice, choices);
     showCartAddedToast(rewardChoice.name);
-    setRewardChoice(null);
+    closeRewardChoiceDialog();
+  }
+
+  function blockSheetDismissWhileRewardChoiceOpen(event: Event) {
+    if (rewardChoice) {
+      event.preventDefault();
+    }
+  }
+
+  function handleSheetOpenChange(next: boolean) {
+    if (!next && (rewardChoice || suppressSheetCloseRef.current)) {
+      if (rewardChoice) {
+        closeRewardChoiceDialog();
+      }
+      return;
+    }
+    resetOnClose(next);
   }
 
   function handleSetQuantity(lineId: string, quantity: number) {
@@ -313,12 +338,7 @@ export function CartSheet({
 
   return (
     <>
-      <LoyaltyRewardChoiceDialog
-        reward={rewardChoice}
-        onClose={() => setRewardChoice(null)}
-        onConfirm={handleConfirmRewardChoice}
-      />
-      <Sheet open={open} onOpenChange={resetOnClose}>
+      <Sheet open={open} onOpenChange={handleSheetOpenChange}>
       <SheetTrigger asChild>
         <Button
           size="lg"
@@ -347,6 +367,9 @@ export function CartSheet({
         side="right"
         showCloseButton={false}
         className="flex w-full flex-col gap-0 p-0 sm:max-w-full"
+        onInteractOutside={blockSheetDismissWhileRewardChoiceOpen}
+        onPointerDownOutside={blockSheetDismissWhileRewardChoiceOpen}
+        onFocusOutside={blockSheetDismissWhileRewardChoiceOpen}
       >
         <SheetHeader className="border-b-2 border-primary">
           <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
@@ -658,6 +681,11 @@ export function CartSheet({
             </div>
           </div>
         )}
+        <LoyaltyRewardChoiceDialog
+          reward={rewardChoice}
+          onClose={closeRewardChoiceDialog}
+          onConfirm={handleConfirmRewardChoice}
+        />
       </SheetContent>
     </Sheet>
     </>
