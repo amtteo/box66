@@ -59,9 +59,6 @@ export function SignUpForm({ redirectTo = "/" }: { redirectTo?: string }) {
               required
             />
             <FieldError messages={state?.errors?.password} />
-            <p className="text-xs text-muted-foreground">
-              Aspoň 8 znakov, jedno písmeno a jedno číslo.
-            </p>
           </div>
         </div>
         <div className="mt-6 flex-col gap-4">

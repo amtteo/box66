@@ -12,11 +12,7 @@ export const SignUpSchema = z.object({
     .max(120, { error: "Meno je príliš dlhé." })
     .trim(),
   email: z.email({ error: "Zadaj platný e-mail." }).trim(),
-  password: z
-    .string()
-    .min(8, { error: "Heslo musí mať aspoň 8 znakov." })
-    .regex(/[a-zA-Z]/, { error: "Heslo musí obsahovať aspoň jedno písmeno." })
-    .regex(/[0-9]/, { error: "Heslo musí obsahovať aspoň jedno číslo." }),
+  password: z.string().min(6, { error: "Heslo musí mať aspoň 6 znakov." }),
 });
 
 export type AuthFormState =

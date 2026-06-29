@@ -26,8 +26,7 @@ export function NewUserSignUpForm({ token, phone, fullName }: Props) {
   return (
     <div className="p-8">
       <p className="mb-6 text-sm text-muted-foreground">
-        Telefón <span className="font-medium text-foreground">{phone}</span> — doplň
-        e-mail a heslo pre vernostný účet BOX66.
+        Nový účet pre tel. č. <span className="font-medium text-foreground">{phone}</span>
       </p>
       <form action={action}>
         <div className="space-y-4">
@@ -65,9 +64,6 @@ export function NewUserSignUpForm({ token, phone, fullName }: Props) {
               required
             />
             <FieldError messages={state?.errors?.password} />
-            <p className="text-xs text-muted-foreground">
-              Aspoň 8 znakov, jedno písmeno a jedno číslo.
-            </p>
           </div>
         </div>
         <div className="mt-6 flex flex-col gap-4">
@@ -79,9 +75,6 @@ export function NewUserSignUpForm({ token, phone, fullName }: Props) {
             {pending ? "Vytváram účet…" : "Dokončiť registráciu"}
           </Button>
           <div className="mt-4 flex flex-col gap-4 text-center text-sm text-muted-foreground">
-            <Link href="/prihlasenie" className="text-foreground underline">
-              Už mám účet — prihlásiť sa
-            </Link>
             <Link href="/" className="text-foreground underline">
               Úvodná stránka
             </Link>
