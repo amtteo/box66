@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { updateOrderStatus } from "@/lib/orders/actions";
@@ -42,6 +43,7 @@ export function OrderReversalDialog({
   nextStatus: "CANCELLED" | "REFUNDED";
   trigger: React.ReactNode;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const showStockSwitch = orderHadStockDeducted(currentStatus);
@@ -59,6 +61,7 @@ export function OrderReversalDialog({
       if (res.ok) {
         toast.success(`Objednávka #${orderNumber}: ${ORDER_STATUS_LABEL[nextStatus]}.`);
         setOpen(false);
+        router.refresh();
       } else {
         toast.error(res.message);
       }

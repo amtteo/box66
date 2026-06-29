@@ -15,28 +15,57 @@ import {
 import { showCartAddedToast } from "@/components/storefront/cart-added-toast";
 import { useCart } from "@/components/storefront/cart-context";
 import { cn } from "@/lib/utils";
-import { type CartChoice, type MenuChoiceOptionDTO, type MenuItemDTO } from "@/lib/orders/types";
+import {
+  type CartChoice,
+  type MenuChoiceOptionDTO,
+  type MenuItemDTO,
+} from "@/lib/orders/types";
+
+type ComboChoiceDialogProps = {
+  item: MenuItemDTO | null;
+  currency: string;
+  onClose: () => void;
+  onBack?: () => void;
+  /** Ak je nastavené, použije sa namiesto storefront košíka (napr. POS). */
+  onConfirm?: (item: MenuItemDTO, choices: CartChoice[]) => void;
+};
 
 /**
  * Modal výberu pre kombo (napr. nápoj k menu). Otvorí sa pri pridávaní položky,
  * ktorá má aspoň jednu skupinu výberu. Po potvrdení pridá riadok do košíka.
  */
-export function ComboChoiceDialog({
+export function ComboChoiceDialog(props: ComboChoiceDialogProps) {
+  if (props.onConfirm) {
+    return <ComboChoiceDialogContent {...props} onAdd={props.onConfirm} />;
+  }
+  return <ComboChoiceDialogWithStorefrontCart {...props} />;
+}
+
+function ComboChoiceDialogWithStorefrontCart(
+  props: Omit<ComboChoiceDialogProps, "onConfirm">,
+) {
+  const { add } = useCart();
+  return (
+    <ComboChoiceDialogContent
+      {...props}
+      onAdd={(item, choices) => {
+        add(item, choices);
+        showCartAddedToast(item.name);
+      }}
+    />
+  );
+}
+
+function ComboChoiceDialogContent({
   item,
-  currency,
   onClose,
   onBack,
-}: {
-  item: MenuItemDTO | null;
-  currency: string;
-  onClose: () => void;
-  onBack?: () => void;
+  onAdd,
+}: Omit<ComboChoiceDialogProps, "onConfirm"> & {
+  onAdd: (item: MenuItemDTO, choices: CartChoice[]) => void;
 }) {
-  const { add } = useCart();
-  // Mapa groupId -> zoznam vybraných menuItemId.
   const [selected, setSelected] = useState<Record<string, string[]>>({});
 
-  // Reset výberu pri zmene položky.
   const itemKey = item?.id ?? null;
   const [lastKey, setLastKey] = useState<string | null>(null);
   if (itemKey !== lastKey) {
@@ -88,8 +117,7 @@ export function ComboChoiceDialog({
         });
       }
     }
-    add(item, choices);
-    showCartAddedToast(item.name);
+    onAdd(item, choices);
     onClose();
   }
 
@@ -173,7 +201,12 @@ export function ComboChoiceDialog({
         </div>
 
         <DialogFooter>
-          <Button className="h-14 px-6 bg-yellow-400 text-black font-bold hover:bg-yellow-500 text-lg disabled:bg-zinc-200" type="button" onClick={confirm} disabled={!allValid}>
+          <Button
+            className="h-14 bg-yellow-400 px-6 text-lg font-bold text-black hover:bg-yellow-500 disabled:bg-zinc-200"
+            type="button"
+            onClick={confirm}
+            disabled={!allValid}
+          >
             Pridať do košíka
           </Button>
         </DialogFooter>

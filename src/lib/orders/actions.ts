@@ -41,6 +41,17 @@ import {
   reverseLoyaltyOnCancelled,
   reverseLoyaltyOnRefunded,
 } from "@/lib/loyalty/order-lifecycle";
+import {
+  isOrderApiConfigured,
+  isOrderApiUnreachableError,
+  OrderApiError,
+  patchOrderStatusViaApi,
+  placeOrderViaApi,
+} from "@/lib/orders/api-client";
+import { buildApiCreateOrderRequest } from "@/lib/orders/api-order-payload";
+import { storeOrdersToListItems } from "@/lib/orders/board";
+import { getStoreOrders } from "@/lib/orders/queries";
+import type { OrderListItem } from "@/components/admin/orders/orders-board";
 
 const ADMIN_ORDERS_PATH = "/admin/objednavky";
 const ADMIN_STOCK_PATH = "/admin/sklad";
@@ -371,81 +382,131 @@ export async function placeOrder(
       points: l.pointsRedeemed!,
     }));
 
-  // Vytvor objednávku + položky s pridelením poradového čísla (s retry pri kolízii).
   let created: { id: string; orderNumber: number } | null = null;
-  for (let attempt = 0; attempt < 5 && !created; attempt++) {
+
+  if (isOrderApiConfigured()) {
     try {
-      created = await prisma.$transaction(async (tx) => {
-        const orderNumber = await nextOrderNumber(tx, store.id);
-        const order = await tx.order.create({
+      const apiOrder = await placeOrderViaApi(
+        store.id,
+        buildApiCreateOrderRequest({
+          checkout: data,
+          orderLines,
+          customerId,
+          deliveryAddress,
+          deliveryDistanceKm,
+        }),
+      );
+      created = { id: apiOrder.id, orderNumber: apiOrder.orderNumber };
+
+      if (
+        data.type === OrderType.DELIVERY &&
+        (deliveryLatitude != null || deliveryLongitude != null || deliveryDurationMinutes != null)
+      ) {
+        await prisma.order.update({
+          where: { id: apiOrder.id },
           data: {
-            orderNumber,
-            storeId: store.id,
-            customerId,
-            type: data.type,
-            status: OrderStatus.PENDING,
-            paymentStatus: PaymentStatus.UNPAID,
-            paymentMethod: data.paymentMethod,
-            subtotal,
-            deliveryFee,
-            total,
-            currency: store.currency,
-            deliveryAddress,
             deliveryLatitude,
             deliveryLongitude,
-            deliveryDistanceKm,
             deliveryDurationMinutes,
-            customerName: data.customerName ?? null,
-            customerEmail: data.customerEmail ?? null,
-            customerPhone: data.customerPhone ?? null,
-            note: data.note ?? null,
-            items: {
-              create: orderLines.map((l) => ({
-                menuItemId: l.menuItemId,
-                productId: l.productId,
-                nameSnapshot: l.nameSnapshot,
-                unitPrice: l.unitPrice,
-                quantity: l.quantity,
-                lineTotal: l.lineTotal,
-                note: l.note,
-                isLoyaltyReward: l.isLoyaltyReward ?? false,
-                pointsRedeemed: l.pointsRedeemed ?? null,
-                choices: {
-                  create: l.choices.map((c) => ({
-                    groupId: c.groupId,
-                    productId: c.productId,
-                    menuItemId: c.menuItemId,
-                    groupLabel: c.groupLabel,
-                    nameSnapshot: c.nameSnapshot,
-                  })),
-                },
-              })),
-            },
           },
-          select: { id: true, orderNumber: true },
         });
-
-        if (redeemLines.length > 0 && customerId) {
-          await redeemLoyaltyPoints(tx, {
-            profileId: customerId,
-            storeId: store.id,
-            orderId: order.id,
-            lines: redeemLines,
-          });
-        }
-
-        return order;
-      });
-    } catch (err) {
-      if (err instanceof InsufficientLoyaltyPointsError) {
-        return {
-          ok: false,
-          message: "Nemáš dostatok bodov na uplatnenie odmien.",
-        };
       }
-      if (isUniqueViolation(err)) continue; // kolízia orderNumber → skús znova
-      console.error("[placeOrder] create failed:", err);
-      return { ok: false, message: "Objednávku sa nepodarilo vytvoriť." };
+    } catch (err) {
+      if (err instanceof OrderApiError) {
+        const message =
+          err.status === 422
+            ? err.message.includes("bodov")
+              ? "Nemáš dostatok bodov na uplatnenie odmien."
+              : err.message
+            : "Objednávku sa nepodarilo vytvoriť. Skús to znova.";
+        return { ok: false, message };
+      }
+      if (isOrderApiUnreachableError(err)) {
+        console.warn(
+          "[placeOrder] Order API nedostupné, vytváram objednávku cez Prisma.",
+        );
+      } else {
+        console.error("[placeOrder] api create failed:", err);
+        return { ok: false, message: "Objednávku sa nepodarilo vytvoriť." };
+      }
+    }
+  }
+
+  if (!created) {
+    for (let attempt = 0; attempt < 5 && !created; attempt++) {
+      try {
+        created = await prisma.$transaction(async (tx) => {
+          const orderNumber = await nextOrderNumber(tx, store.id);
+          const order = await tx.order.create({
+            data: {
+              orderNumber,
+              storeId: store.id,
+              customerId,
+              type: data.type,
+              status: OrderStatus.PENDING,
+              paymentStatus: PaymentStatus.UNPAID,
+              paymentMethod: data.paymentMethod,
+              subtotal,
+              deliveryFee,
+              total,
+              currency: store.currency,
+              deliveryAddress,
+              deliveryLatitude,
+              deliveryLongitude,
+              deliveryDistanceKm,
+              deliveryDurationMinutes,
+              customerName: data.customerName ?? null,
+              customerEmail: data.customerEmail ?? null,
+              customerPhone: data.customerPhone ?? null,
+              note: data.note ?? null,
+              items: {
+                create: orderLines.map((l) => ({
+                  menuItemId: l.menuItemId,
+                  productId: l.productId,
+                  nameSnapshot: l.nameSnapshot,
+                  unitPrice: l.unitPrice,
+                  quantity: l.quantity,
+                  lineTotal: l.lineTotal,
+                  note: l.note,
+                  isLoyaltyReward: l.isLoyaltyReward ?? false,
+                  pointsRedeemed: l.pointsRedeemed ?? null,
+                  choices: {
+                    create: l.choices.map((c) => ({
+                      groupId: c.groupId,
+                      productId: c.productId,
+                      menuItemId: c.menuItemId,
+                      groupLabel: c.groupLabel,
+                      nameSnapshot: c.nameSnapshot,
+                    })),
+                  },
+                })),
+              },
+            },
+            select: { id: true, orderNumber: true },
+          });
+
+          if (redeemLines.length > 0 && customerId) {
+            await redeemLoyaltyPoints(tx, {
+              profileId: customerId,
+              storeId: store.id,
+              orderId: order.id,
+              lines: redeemLines,
+            });
+          }
+
+          return order;
+        });
+      } catch (err) {
+        if (err instanceof InsufficientLoyaltyPointsError) {
+          return {
+            ok: false,
+            message: "Nemáš dostatok bodov na uplatnenie odmien.",
+          };
+        }
+        if (isUniqueViolation(err)) continue;
+        console.error("[placeOrder] create failed:", err);
+        return { ok: false, message: "Objednávku sa nepodarilo vytvoriť." };
+      }
     }
   }
   if (!created) {
@@ -454,8 +515,11 @@ export async function placeOrder(
 
   revalidatePath(ADMIN_ORDERS_PATH);
 
-  // Platba v hotovosti — hotovo, čaká na potvrdenie obsluhou.
-  if (data.paymentMethod === PaymentMethod.CASH) {
+  // Hotovosť / karta na mieste — hotovo, čaká na potvrdenie obsluhou.
+  if (
+    data.paymentMethod === PaymentMethod.CASH ||
+    data.paymentMethod === PaymentMethod.CARD
+  ) {
     return { ok: true, orderId: created.id, orderNumber: created.orderNumber };
   }
 
@@ -667,7 +731,6 @@ export async function updateOrderStatus(
     stockWasDeducted &&
     (options?.restoreStock ?? defaultRestoreStock(order.status));
 
-  // Refund online platby cez Stripe (pred zmenou stavu, aby sme pri zlyhaní necúvli).
   let refundPaymentStatus: PaymentStatus | null = null;
   if (
     nextStatus === OrderStatus.REFUNDED &&
@@ -689,16 +752,42 @@ export async function updateOrderStatus(
     }
   }
 
+  let apiUsed = false;
+
+  if (isOrderApiConfigured()) {
+    try {
+      await patchOrderStatusViaApi(order.id, nextStatus, {
+        restoreStock: isReversal ? shouldRestoreStock : undefined,
+        refundedSubtotal: options?.refundedSubtotal,
+      });
+      apiUsed = true;
+    } catch (err) {
+      if (err instanceof OrderApiError) {
+        return { ok: false, message: err.message };
+      }
+      if (isOrderApiUnreachableError(err)) {
+        console.warn(
+          "[updateOrderStatus] Order API nedostupné, mením stav cez Prisma.",
+        );
+      } else {
+        console.error("[updateOrderStatus] api failed:", err);
+        return { ok: false, message: "Stav objednávky sa nepodarilo zmeniť." };
+      }
+    }
+  }
+
   try {
     await prisma.$transaction(async (tx) => {
       if (nextStatus === OrderStatus.CONFIRMED) {
-        await deductStockForOrder(tx, {
-          storeId: order.storeId,
-          orderId: order.id,
-          lines,
-          createdById: profile.id,
-        });
-      } else if (shouldRestoreStock) {
+        if (!apiUsed) {
+          await deductStockForOrder(tx, {
+            storeId: order.storeId,
+            orderId: order.id,
+            lines,
+            createdById: profile.id,
+          });
+        }
+      } else if (shouldRestoreStock && !apiUsed) {
         await reverseStockForOrder(tx, {
           storeId: order.storeId,
           orderId: order.id,
@@ -711,20 +800,31 @@ export async function updateOrderStatus(
         order.paymentMethod === PaymentMethod.CASH &&
         order.paymentStatus === PaymentStatus.UNPAID;
 
-      await tx.order.update({
-        where: { id: order.id },
-        data: {
-          status: nextStatus,
-          ...(nextStatus === OrderStatus.COMPLETED
-            ? { completedAt: new Date() }
+      const orderUpdate: {
+        completedAt?: Date;
+        paymentStatus?: PaymentStatus;
+        status?: OrderStatus;
+      } = {
+        ...(nextStatus === OrderStatus.COMPLETED
+          ? { completedAt: new Date() }
+          : {}),
+        ...(refundPaymentStatus
+          ? { paymentStatus: refundPaymentStatus }
+          : cashCollected
+            ? { paymentStatus: PaymentStatus.PAID }
             : {}),
-          ...(refundPaymentStatus
-            ? { paymentStatus: refundPaymentStatus }
-            : cashCollected
-              ? { paymentStatus: PaymentStatus.PAID }
-              : {}),
-        },
-      });
+      };
+
+      if (!apiUsed) {
+        orderUpdate.status = nextStatus;
+      }
+
+      if (Object.keys(orderUpdate).length > 0) {
+        await tx.order.update({
+          where: { id: order.id },
+          data: orderUpdate,
+        });
+      }
 
       const loyaltyOrder = {
         id: order.id,
@@ -733,14 +833,16 @@ export async function updateOrderStatus(
         items: order.items,
       };
 
-      if (nextStatus === OrderStatus.COMPLETED) {
-        await awardLoyaltyOnCompleted(tx, loyaltyOrder);
-      } else if (nextStatus === OrderStatus.CANCELLED) {
-        await reverseLoyaltyOnCancelled(tx, loyaltyOrder);
-      } else if (nextStatus === OrderStatus.REFUNDED) {
-        await reverseLoyaltyOnRefunded(tx, loyaltyOrder, {
-          refundedSubtotal: options?.refundedSubtotal,
-        });
+      if (!apiUsed) {
+        if (nextStatus === OrderStatus.COMPLETED) {
+          await awardLoyaltyOnCompleted(tx, loyaltyOrder);
+        } else if (nextStatus === OrderStatus.CANCELLED) {
+          await reverseLoyaltyOnCancelled(tx, loyaltyOrder);
+        } else if (nextStatus === OrderStatus.REFUNDED) {
+          await reverseLoyaltyOnRefunded(tx, loyaltyOrder, {
+            refundedSubtotal: options?.refundedSubtotal,
+          });
+        }
       }
     });
   } catch (err) {
@@ -767,4 +869,13 @@ export async function updateOrderStatus(
     revalidatePath(ADMIN_STOCK_PATH);
   }
   return { ok: true };
+}
+
+/** Obnoví zoznam objednávok pre KDS board (polling cez Order API alebo Prisma). */
+export async function refreshStoreOrdersBoard(
+  storeId: string,
+): Promise<OrderListItem[]> {
+  await authorizeStore(storeId, Role.STAFF);
+  const orders = await getStoreOrders(storeId);
+  return storeOrdersToListItems(orders);
 }

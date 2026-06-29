@@ -5,8 +5,10 @@ import { usePathname } from "next/navigation";
 import {
   Boxes,
   Building2,
+  ChefHat,
   Gift,
   LayoutDashboard,
+  Monitor,
   Percent,
   Receipt,
   Store,
@@ -49,6 +51,8 @@ type NavItem = {
 const PREVADZKA: NavItem[] = [
   { title: "Prehľad", href: "/admin", icon: LayoutDashboard, cap: "always" },
   { title: "Objednávky", href: "/admin/objednavky", icon: Receipt, cap: "store" },
+  { title: "Pokladňa", href: "/admin/pokladna", icon: Monitor, cap: "store" },
+  { title: "Kuchyňa", href: "/admin/kuchyna", icon: ChefHat, cap: "store" },
   { title: "Menu", href: "/admin/menu", icon: Utensils, cap: "store" },
   { title: "Sklad", href: "/admin/sklad", icon: Warehouse, cap: "store" },
   { title: "Donáška", href: "/admin/donaska", icon: Truck, cap: "store" },

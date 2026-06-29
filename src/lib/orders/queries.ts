@@ -3,6 +3,14 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { OrderStatus } from "@/generated/prisma/enums";
 import { resolveMenuItemPrice, toNumber } from "@/lib/pricing/resolve";
+import {
+  fetchMenuFromApi,
+  fetchStoreOrdersFromApi,
+  isOrderApiConfigured,
+  isOrderApiUnreachableError,
+} from "@/lib/orders/api-client";
+import { mapApiMenuToPublicMenu } from "@/lib/orders/api-menu-mapper";
+import { mapApiOrderToStoreRow } from "@/lib/orders/api-mapper";
 
 /**
  * Predvolená verejná predajňa pre úvodnú stránku. Zatiaľ máme jednu prevádzku,
@@ -68,6 +76,27 @@ export type PublicMenuItem = {
 
 /** Dostupné položky menu predajne pre verejné objednávanie (zoradené podľa kategórie). */
 export async function getPublicMenu(storeId: string): Promise<PublicMenuItem[]> {
+  if (isOrderApiConfigured()) {
+    try {
+      const menu = await fetchMenuFromApi(storeId);
+      return mapApiMenuToPublicMenu(menu);
+    } catch (err) {
+      if (isOrderApiUnreachableError(err)) {
+        console.warn(
+          "[getPublicMenu] Order API nedostupné, načítavam menu cez Prisma.",
+        );
+        return getPublicMenuFromPrisma(storeId);
+      }
+      throw err;
+    }
+  }
+
+  return getPublicMenuFromPrisma(storeId);
+}
+
+async function getPublicMenuFromPrisma(
+  storeId: string,
+): Promise<PublicMenuItem[]> {
   const [store, menuItems] = await Promise.all([
     prisma.store.findUnique({
       where: { id: storeId },
@@ -208,8 +237,56 @@ export async function getPublicMenu(storeId: string): Promise<PublicMenuItem[]> 
   });
 }
 
+export type StoreOrderRow = {
+  id: string;
+  orderNumber: number;
+  type: import("@/generated/prisma/enums").OrderType;
+  status: import("@/generated/prisma/enums").OrderStatus;
+  paymentStatus: import("@/generated/prisma/enums").PaymentStatus;
+  paymentMethod: import("@/generated/prisma/enums").PaymentMethod | null;
+  total: { toString(): string } | number | string;
+  currency: string;
+  customerName: string | null;
+  customerEmail: string | null;
+  customerPhone: string | null;
+  note: string | null;
+  placedAt: Date;
+  customer: { fullName: string | null; email: string } | null;
+  items: {
+    id: string;
+    nameSnapshot: string;
+    quantity: number;
+    unitPrice: { toString(): string } | number | string;
+    lineTotal: { toString(): string } | number | string;
+    note: string | null;
+    choices: { id: string; groupLabel: string; nameSnapshot: string }[];
+  }[];
+};
+
 /** Zoznam objednávok predajne pre admin (najnovšie hore). */
-export async function getStoreOrders(storeId: string, take = 100) {
+export async function getStoreOrders(storeId: string, take = 100): Promise<StoreOrderRow[]> {
+  if (isOrderApiConfigured()) {
+    try {
+      const orders = await fetchStoreOrdersFromApi(storeId, { limit: take });
+      return orders.map(mapApiOrderToStoreRow);
+    } catch (err) {
+      if (isOrderApiUnreachableError(err)) {
+        console.warn(
+          "[getStoreOrders] Order API nedostupné, načítavam objednávky cez Prisma.",
+        );
+        return getStoreOrdersFromPrisma(storeId, take);
+      }
+      throw err;
+    }
+  }
+
+  return getStoreOrdersFromPrisma(storeId, take);
+}
+
+async function getStoreOrdersFromPrisma(
+  storeId: string,
+  take: number,
+): Promise<StoreOrderRow[]> {
   return prisma.order.findMany({
     where: { storeId },
     orderBy: { placedAt: "desc" },
@@ -264,5 +341,3 @@ export async function getOpenOrdersCount(storeId: string) {
     },
   });
 }
-
-export type StoreOrderRow = Awaited<ReturnType<typeof getStoreOrders>>[number];

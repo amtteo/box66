@@ -1,6 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Receipt } from "lucide-react";
 
@@ -9,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { OrderReversalDialog } from "@/components/admin/orders/order-reversal-dialog";
-import { updateOrderStatus } from "@/lib/orders/actions";
+import { refreshStoreOrdersBoard, updateOrderStatus } from "@/lib/orders/actions";
+import { useOrdersRealtime } from "@/lib/orders/use-orders-realtime";
 import {
   ORDER_STATUS_FLOW,
   ORDER_STATUS_LABEL,
@@ -72,7 +74,36 @@ const ACTION_LABEL: Record<OrderStatus, string> = {
   REFUNDED: "Refundovať",
 };
 
-export function OrdersBoard({ orders }: { orders: OrderListItem[] }) {
+export function OrdersBoard({
+  storeId,
+  orders: initialOrders,
+  liveRefresh = false,
+}: {
+  storeId: string;
+  orders: OrderListItem[];
+  liveRefresh?: boolean;
+}) {
+  const [orders, setOrders] = useState(initialOrders);
+
+  useEffect(() => {
+    setOrders(initialOrders);
+  }, [initialOrders]);
+
+  const refresh = useCallback(async () => {
+    try {
+      const fresh = await refreshStoreOrdersBoard(storeId);
+      setOrders(fresh);
+    } catch {
+      // Realtime alebo fallback polling skúsi znova.
+    }
+  }, [storeId]);
+
+  useOrdersRealtime({
+    storeId,
+    enabled: liveRefresh,
+    onRefresh: refresh,
+  });
+
   if (orders.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed p-12 text-center text-muted-foreground">
@@ -97,6 +128,7 @@ const REVERSAL_STATUSES = new Set<OrderStatus>([
 ]);
 
 function OrderCard({ order }: { order: OrderListItem }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const nextStatuses = ORDER_STATUS_FLOW[order.status] ?? [];
 
@@ -105,6 +137,7 @@ function OrderCard({ order }: { order: OrderListItem }) {
       const res = await updateOrderStatus(order.id, next);
       if (res.ok) {
         toast.success(`Objednávka #${order.orderNumber}: ${ORDER_STATUS_LABEL[next]}.`);
+        router.refresh();
       } else {
         toast.error(res.message);
       }

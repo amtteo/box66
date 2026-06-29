@@ -108,11 +108,13 @@ model Profile {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  memberships      Membership[]
-  ordersAsCustomer Order[]         @relation("CustomerOrders")
-  stockMovements   StockMovement[] @relation("StockMovementCreatedBy")
-  loyaltyAccounts  LoyaltyAccount[]
+  memberships             Membership[]
+  ordersAsCustomer        Order[]                  @relation("CustomerOrders")
+  stockMovements          StockMovement[]          @relation("StockMovementCreatedBy")
+  loyaltyAccounts         LoyaltyAccount[]
+  pendingInvitesCompleted PendingCustomerInvite[]  @relation("InviteProfile")
 
+  @@unique([phone])
   @@index([email])
   @@map("profiles")
 }
@@ -175,6 +177,8 @@ model Store {
   supplierPrices     SupplierIngredient[]
   deliveryZones      StoreDeliveryZone[]
   loyaltyAccounts    LoyaltyAccount[]
+  phoneLoyaltyAccounts PhoneLoyaltyAccount[]
+  pendingCustomerInvites PendingCustomerInvite[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -553,6 +557,7 @@ model Order {
   customerEmail String?
   customerPhone String?
   note          String?
+  tableNumber   String?
 
   placedAt    DateTime  @default(now())
   completedAt DateTime?
@@ -564,6 +569,7 @@ model Order {
   items               OrderItem[]
   stockMovements      StockMovement[]
   loyaltyTransactions LoyaltyTransaction[]
+  phoneLoyaltyTransactions PhoneLoyaltyTransaction[]
 
   @@unique([storeId, orderNumber])
   @@index([storeId])
@@ -670,4 +676,68 @@ model LoyaltyTransaction {
   @@index([accountId, createdAt])
   @@index([orderId])
   @@map("loyalty_transactions")
+}
+
+enum PendingInviteStatus {
+  PENDING
+  COMPLETED
+  EXPIRED
+}
+
+/// Pozvánka na dokončenie registrácie po prvom nákupe v POS (SMS odkaz).
+model PendingCustomerInvite {
+  id         String              @id @default(uuid(7)) @db.Uuid
+  token      String              @unique
+  phone      String              @unique
+  fullName   String?
+  storeId    String?             @db.Uuid
+  status     PendingInviteStatus @default(PENDING)
+  profileId  String?             @db.Uuid
+  smsSentAt  DateTime?
+  smsCount   Int                 @default(0)
+  expiresAt  DateTime
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  store              Store?                @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  profile            Profile?              @relation("InviteProfile", fields: [profileId], references: [id], onDelete: SetNull)
+  phoneLoyaltyAccounts PhoneLoyaltyAccount[]
+
+  @@index([token])
+  @@map("pending_customer_invites")
+}
+
+/// Dočasný zostatok bodov viazaný na telefón pred vytvorením účtu.
+model PhoneLoyaltyAccount {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  phone           String
+  storeId         String   @db.Uuid
+  balance         Int      @default(0)
+  pendingInviteId String?  @db.Uuid
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  store         Store                  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  pendingInvite PendingCustomerInvite? @relation(fields: [pendingInviteId], references: [id], onDelete: SetNull)
+  transactions  PhoneLoyaltyTransaction[]
+
+  @@unique([phone, storeId])
+  @@index([phone])
+  @@map("phone_loyalty_accounts")
+}
+
+model PhoneLoyaltyTransaction {
+  id        String        @id @default(uuid(7)) @db.Uuid
+  accountId String        @db.Uuid
+  type      LoyaltyTxType
+  points    Int
+  orderId   String?       @db.Uuid
+  createdAt DateTime      @default(now())
+
+  account PhoneLoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  order   Order?              @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, createdAt])
+  @@index([orderId])
+  @@map("phone_loyalty_transactions")
 }

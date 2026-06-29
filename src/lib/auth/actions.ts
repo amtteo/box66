@@ -48,6 +48,11 @@ export async function signIn(
     };
   }
 
+  const { data: sessionData } = await supabase.auth.getUser();
+  if (sessionData.user?.id) {
+    await mergeAfterAuth(sessionData.user.id);
+  }
+
   revalidatePath("/", "layout");
   redirect(safeRedirectPath(formData.get("redirect"), "/"));
 }
@@ -84,6 +89,10 @@ export async function signInForCheckout(
   const profile = data.user
     ? await prisma.profile.findUnique({ where: { id: data.user.id } })
     : null;
+
+  if (data.user?.id) {
+    await mergeAfterAuth(data.user.id);
+  }
 
   revalidatePath("/", "layout");
 
@@ -213,4 +222,11 @@ function z_flatten(error: {
     (out[key] ??= []).push(issue.message);
   }
   return out;
+}
+
+async function mergeAfterAuth(userId: string) {
+  const { tryMergePendingInviteForProfile } = await import(
+    "@/lib/customer-invite/merge"
+  );
+  await tryMergePendingInviteForProfile(userId);
 }
