@@ -515,11 +515,8 @@ export async function placeOrder(
 
   revalidatePath(ADMIN_ORDERS_PATH);
 
-  // Hotovosť / karta na mieste — hotovo, čaká na potvrdenie obsluhou.
-  if (
-    data.paymentMethod === PaymentMethod.CASH ||
-    data.paymentMethod === PaymentMethod.CARD
-  ) {
+  // Hotovosť pri prevzatí — hotovo, čaká na potvrdenie obsluhou.
+  if (data.paymentMethod === PaymentMethod.CASH) {
     return { ok: true, orderId: created.id, orderNumber: created.orderNumber };
   }
 
