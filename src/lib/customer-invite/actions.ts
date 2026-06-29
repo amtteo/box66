@@ -58,7 +58,7 @@ export async function completeInviteSignUp(
       message:
         error.code === "user_already_exists" || /already/i.test(error.message)
           ? "Účet s týmto e-mailom už existuje."
-          : "Registráciu sa nepodarilo dokončiť. Skús to znova.",
+          : "Registráciu sa nepodarilo dokončiť. Skúste to znova.",
       values: { fullName, email },
     };
   }
@@ -68,7 +68,7 @@ export async function completeInviteSignUp(
     await mergePendingInviteForProfile(userId, invite.phone);
     revalidatePath("/", "layout");
     return {
-      message: "Účet je pripravený. Môžeš sa prihlásiť a používať vernostné body.",
+      message: "Účet je pripravený. Môžeete sa prihlásiť.",
     };
   }
 
@@ -82,7 +82,7 @@ export async function completeInviteSignUp(
   return {
     ok: false,
     message:
-      "Účet sme vytvorili. Skontroluj si e-mail a potvrď registráciu — potom sa prihlás a body sa ti pripíšu automaticky.",
+      "Účet sme vytvorili. Skontrolujte si e-mail a potvrďte registráciu.",
     values: { fullName, email },
   };
 }
