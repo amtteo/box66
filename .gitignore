@@ -42,3 +42,6 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# izolovaný twilio test (credentials len lokálne)
+src/app/dev-test/**/local-config.ts
