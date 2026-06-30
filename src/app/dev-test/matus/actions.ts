@@ -9,20 +9,7 @@ export type RingState = {
   callSid?: string;
 };
 
-function isConfigured(): boolean {
-  const { accountSid, authToken, fromNumber } = phoneCallConfig;
-  return Boolean(accountSid && authToken && fromNumber);
-}
-
 export async function ringNow(): Promise<RingState> {
-  if (!isConfigured()) {
-    return {
-      ok: false,
-      message:
-        "V secrets.json chýbajú Twilio údaje (skopíruj secrets.example.json).",
-    };
-  }
-
   const result = await placeTestCall({
     accountSid: phoneCallConfig.accountSid,
     authToken: phoneCallConfig.authToken,
