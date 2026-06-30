@@ -1,6 +1,6 @@
 "use server";
 
-import { phoneCallConfig } from "./local-config";
+import { phoneCallConfig } from "./config";
 import { placeTestCall } from "./twilio";
 
 export type RingState = {
@@ -19,7 +19,7 @@ export async function ringNow(): Promise<RingState> {
     return {
       ok: false,
       message:
-        "V local-config.ts chýbajú Twilio údaje. Po registrácii mi pošli kľúče a doplním ich.",
+        "V secrets.json chýbajú Twilio údaje (skopíruj secrets.example.json).",
     };
   }
 
