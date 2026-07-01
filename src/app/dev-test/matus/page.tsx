@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 
 import { AutoRing } from "./auto-ring";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "·",
   robots: { index: false, follow: false },

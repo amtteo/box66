@@ -1,3 +1,7 @@
+import { setDefaultResultOrder } from "dns";
+
+setDefaultResultOrder("ipv4first");
+
 type PlaceTestCallInput = {
   accountSid: string;
   authToken: string;
@@ -39,17 +43,24 @@ export async function placeTestCall(
     "base64",
   );
 
-  const response = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${credentials}`,
-        "Content-Type": "application/x-www-form-urlencoded",
+  let response: Response;
+  try {
+    response = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${credentials}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: body.toString(),
+        cache: "no-store",
       },
-      body: body.toString(),
-    },
-  );
+    );
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "neznáma chyba";
+    return { ok: false, error: `Nepodarilo sa spojiť s Twilio: ${detail}` };
+  }
 
   const payload = (await response.json()) as {
     sid?: string;

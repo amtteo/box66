@@ -6,7 +6,7 @@ export function SiteFooter() {
   return (
     <footer className="mt-auto bg-foreground text-background">
       <div className="">
-      <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-24 sm:px-6 md:grid-cols-3">
+      <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-24 sm:px-6 md:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-3 flex flex-col items-start">
           <Link href="/" className="inline-flex text-background">
             <Logo />
@@ -39,6 +39,22 @@ export function SiteFooter() {
               <Link href="/kontakt" className="hover:text-background">
                 Kontakt
               </Link>
+            </li>
+          </ul>
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="text-2xl font-bold mb-4">Prevádzka</h3>
+          <ul className="space-y-3 text-md text-background/70">
+            <li>
+              <a href="/pos.apk" className="hover:text-background">
+                Aplikácia POS
+              </a>
+            </li>
+            <li>
+              <a href="/kds.apk" className="hover:text-background">
+                Aplikácia Kuchyňa
+              </a>
             </li>
           </ul>
         </div>
